@@ -16,11 +16,9 @@ from ..agent.output_types import Actions
 
 # ── VRMA animation catalog (filenames without extension) ──────────────
 VRMA_ANIMATIONS = [
-    "dance",
     "greeting",
     "squat",
     "spin",
-    "showFullBody",
     "shoot",
     "peaceSign",
     "modelPose",

@@ -48,6 +48,7 @@ dependencies = [
     "faster-whisper>=1.2.1",
     "silero-vad>=6.2.1",
     "yt-dlp>=2026.7.4",
+    "rapidocr-onnxruntime>=1.4.4",
     "ollama>=0.6.2",
     "tiktoken>=0.13.0",
     "torchaudio==2.11.0+cpu; sys_platform != 'darwin'",

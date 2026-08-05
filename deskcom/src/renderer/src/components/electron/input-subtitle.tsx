@@ -324,7 +324,7 @@ export function InputSubtitle() {
                     left="0"
                     right="0"
                     mb={1}
-                    bg="#1e1e3a"
+                    bg="rgba(30, 30, 58, 0.9)"
                     border="1px solid"
                     borderColor="#3a3a6a"
                     rounded="md"
@@ -333,6 +333,7 @@ export function InputSubtitle() {
                     overflowY="auto"
                     zIndex={9999}
                     css={{
+                      backdropFilter: 'blur(12px)',
                       '&::-webkit-scrollbar': { width: '4px' },
                       '&::-webkit-scrollbar-track': { bg: 'transparent' },
                       '&::-webkit-scrollbar-thumb': { bg: '#3a3a6a', borderRadius: '2px' },

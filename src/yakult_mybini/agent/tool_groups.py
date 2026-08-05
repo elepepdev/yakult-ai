@@ -18,9 +18,10 @@ ROUTER_SYSTEM = """Kamu adalah router. Klasifikasikan pesan user ke SATU kategor
 - youtube: cari/putar lagu, video, musik
 - file: hapus file atau folder
 - display: atur grid overlay layar
+- vision: baca teks dari layar atau file gambar (OCR)
 - none: sapaan, obrolan biasa, pertanyaan umum, hitungan
 
-Balas HANYA 1 kata: desktop/package/memory/youtube/file/display/none"""
+Balas HANYA 1 kata: desktop/package/memory/youtube/file/display/vision/none"""
 
 
 def get_default_groups() -> Dict[str, ToolGroup]:
@@ -112,6 +113,17 @@ def get_default_groups() -> Dict[str, ToolGroup]:
                 "pada tampilan screen share."
             ),
         ),
+        "vision": ToolGroup(
+            name="vision",
+            description="Read text from the screen or from image files (OCR)",
+            tool_names=["ocr_screen", "ocr_image"],
+            system_prompt=(
+                "Kamu adalah vision agent. Tugasmu membaca teks dari layar "
+                "atau file gambar menggunakan OCR. Gunakan ocr_screen untuk "
+                "membaca apa yang tampil di layar, ocr_image untuk membaca "
+                "teks dari file gambar."
+            ),
+        ),
     }
 
 
@@ -126,6 +138,8 @@ SIMPLE_TOOL_NAMES = [
     "open_url", "screen_size", "detect_os",
     "set_grid_spec", "disable_grid_overlay",
     "get_active_window",
+    # Vision / OCR
+    "ocr_screen", "ocr_image",
 ]
 
 
@@ -142,7 +156,8 @@ def get_summon_specialist_tool() -> dict:
                 "- Install/update/hapus software → group: package\n"
                 "- Simpan fakta tentang user → group: memory\n"
                 "- Putar musik/video → group: youtube\n"
-                "- Hapus file → group: file\n\n"
+                "- Hapus file → group: file\n"
+                "- Baca teks dari layar/gambar → group: vision\n\n"
                 "❌ JANGAN GUNAKAN summon_specialist untuk:\n"
                 "- Chat/obrolan santai ('ok', 'fairs', 'gpp', 'hmm', 'wrong', 'bahahaha')\n"
                 "- Opini/lelucon/roasting/sarkasme\n"
@@ -157,8 +172,8 @@ def get_summon_specialist_tool() -> dict:
                 "properties": {
                     "group": {
                         "type": "string",
-                        "enum": ["desktop", "package", "memory", "youtube", "file", "display"],
-                        "description": "Specialist group: desktop, package, memory, youtube, file, display",
+                        "enum": ["desktop", "package", "memory", "youtube", "file", "display", "vision"],
+                        "description": "Specialist group: desktop, package, memory, youtube, file, display, vision",
                     },
                     "request": {
                         "type": "string",

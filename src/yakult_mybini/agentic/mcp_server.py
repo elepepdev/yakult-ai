@@ -35,6 +35,7 @@ if sys.platform == "linux" and "DISPLAY" not in os.environ:
 from yakult_mybini.agentic.desktop_controller import DesktopController
 from yakult_mybini.agentic.web_searcher import WebSearcher
 from yakult_mybini.agentic.web_fetcher import WebFetcher
+from yakult_mybini.agentic.ocr import ocr_image, ocr_screen
 
 mcp = FastMCP("desktop-controller")
 controller = DesktopController(safety_level=os.environ.get("AGENTIC_SAFETY", "medium"))
@@ -670,6 +671,16 @@ def set_grid_spec(grid_spec: str = "8x6") -> str:
 def disable_grid_overlay() -> str:
     from .grid_state import disable
     return disable()
+
+
+@mcp.tool(name="ocr_screen", description="Capture the screen and read (OCR) all text currently visible on it. Optionally pass a region [left, top, width, height] to read text from only part of the screen. Use this to read what is on the user's screen when they ask 'what does this screen say', 'read this error', 'what text is on screen', or to extract text from an app, terminal, website, or document.")
+def ocr_screen_tool(region: list[int] = None, detail: bool = False) -> str:
+    return ocr_screen(tuple(region) if region else None, detail)
+
+
+@mcp.tool(name="ocr_image", description="Read (OCR) text from an image file. Pass the full path to the image. Use this when the user shares a screenshot, photo, scan, or document image and asks what it says or to extract the text from it.")
+def ocr_image_tool(path: str, detail: bool = False) -> str:
+    return ocr_image(path, detail)
 
 
 @mcp.tool(name="search_youtube", description="Search YouTube for videos matching the query. Returns JSON array of results with title, url, duration, and thumbnail.")

@@ -19,9 +19,11 @@ export const inputSubtitleStyles = {
     rounded: 'xl',
     overflow: 'visible',
     boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-    bg: '#1a1a2e',
+    bg: 'rgba(20, 20, 40, 0.65)',
+    backdropFilter: 'blur(18px)',
+    WebkitBackdropFilter: 'blur(18px)',
     border: '1px solid',
-    borderColor: '#2a2a4a',
+    borderColor: 'rgba(255,255,255,0.2)',
     css: { WebkitUserSelect: 'none' },
   },
 
@@ -40,10 +42,10 @@ export const inputSubtitleStyles = {
   },
 
   statusBox: {
-    bg: '#16162a',
+    bg: 'rgba(255,255,255,0.02)',
     p: '3',
     borderTop: '1px solid',
-    borderColor: '#2a2a4a',
+    borderColor: 'rgba(255,255,255,0.1)',
   },
 
   statusText: {
@@ -60,35 +62,35 @@ export const inputSubtitleStyles = {
   },
 
   inputBox: {
-    bg: '#16162a',
+    bg: 'rgba(255,255,255,0.02)',
     borderTop: '1px solid',
-    borderColor: '#2a2a4a',
+    borderColor: 'rgba(255,255,255,0.1)',
   },
 
   input: {
     size: 'sm',
-    bg: '#0f0f23',
+    bg: 'rgba(0,0,0,0.25)',
     color: '#e0e0ff',
-    _placeholder: { color: '#555577' },
+    _placeholder: { color: '#7777aa' },
     border: '1px solid',
-    borderColor: '#2a2a4a',
+    borderColor: 'rgba(255,255,255,0.2)',
     _focus: {
-      borderColor: '#6666aa',
+      borderColor: 'rgba(120,120,220,0.6)',
       outline: 'none',
-      boxShadow: '0 0 0 1px #6666aa',
+      boxShadow: '0 0 0 1px rgba(120,120,220,0.4)',
     },
-    _hover: { borderColor: '#3a3a5a' },
+    _hover: { borderColor: 'rgba(255,255,255,0.3)' },
     flex: '1',
     rounded: 'md',
   },
 
   sendButton: {
     p: '1.5',
-    bg: '#2a2a4a',
+    bg: 'rgba(120,120,220,0.35)',
     rounded: 'lg',
-    _hover: { bg: '#3a3a5a' },
+    _hover: { bg: 'rgba(120,120,220,0.5)' },
     transition: 'colors',
-    color: '#c0c0e0',
+    color: '#e0e0ff',
     size: 'sm',
   },
 

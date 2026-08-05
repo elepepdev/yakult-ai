@@ -1219,7 +1219,7 @@ export function useVRM({ modelInfo, canvasRef }: UseVRMProps) {
   // --- Random pose scheduler ---
   // While the app is idle, occasionally play one of the pose animations so the
   // character isn't statically standing. Skips if another animation is running.
-  const RANDOM_POSE_ANIMATIONS = ['peaceSign', 'shoot', 'spin', 'squat', 'dance', 'showFullBody', 'modelPose'];
+  const RANDOM_POSE_ANIMATIONS = ['peaceSign', 'shoot', 'spin', 'squat', 'modelPose'];
   const RANDOM_POSE_MIN_MS = 30000;
   const RANDOM_POSE_MAX_MS = 60000;
   const randomPoseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

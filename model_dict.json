@@ -1,0 +1,211 @@
+[
+    {
+        "name": "mao_pro",
+        "type": "live2d",
+        "description": "",
+        "url": "/live2d-models/mao_pro/runtime/mao_pro.model3.json",
+        "kScale": 0.5,
+        "initialXshift": 0,
+        "initialYshift": 0,
+        "kXOffset": 1150,
+        "idleMotionGroupName": "Idle",
+        "emotionMap": {
+            "neutral": 0,
+            "anger": 2,
+            "disgust": 2,
+            "fear": 4,
+            "joy": 3,
+            "smirk": 3,
+            "sadness": 1,
+            "surprise": 3
+        },
+        "tapMotions": {
+            "HitAreaHead": {
+                "": 1
+            },
+            "HitAreaBody": {
+                "": 1
+            }
+        }
+    },
+    {
+        "name": "Test",
+        "type": "vrm",
+        "url": "/vrm-models/Test.vrm",
+        "emotionMap": {
+            "neutral": "neutral",
+            "joy": "happy",
+            "anger": "angry",
+            "sadness": "sad",
+            "surprise": "surprised",
+            "relaxed": "relaxed"
+        },
+        "visemeMap": {
+            "aa": "aa",
+            "ee": "ee",
+            "ih": "ih",
+            "oh": "oh",
+            "ou": "ou"
+        }
+    },
+    {
+        "name": "Test_b3230c",
+        "type": "vrm",
+        "url": "/vrm-models/Test_b3230c.vrm",
+        "emotionMap": {
+            "neutral": "neutral",
+            "joy": "happy",
+            "anger": "angry",
+            "sadness": "sad",
+            "surprise": "surprised",
+            "relaxed": "relaxed"
+        },
+        "visemeMap": {
+            "aa": "aa",
+            "ee": "ee",
+            "ih": "ih",
+            "oh": "oh",
+            "ou": "ou"
+        }
+    },
+    {
+        "name": "Test_41918e",
+        "type": "vrm",
+        "url": "/vrm-models/Test_41918e.vrm",
+        "emotionMap": {
+            "neutral": "neutral",
+            "joy": "happy",
+            "anger": "angry",
+            "sadness": "sad",
+            "surprise": "surprised",
+            "relaxed": "relaxed"
+        },
+        "visemeMap": {
+            "aa": "aa",
+            "ee": "ee",
+            "ih": "ih",
+            "oh": "oh",
+            "ou": "ou"
+        }
+    },
+    {
+        "name": "Test_45638d",
+        "type": "vrm",
+        "url": "/vrm-models/Test_45638d.vrm",
+        "emotionMap": {
+            "neutral": "neutral",
+            "joy": "happy",
+            "anger": "angry",
+            "sadness": "sad",
+            "surprise": "surprised",
+            "relaxed": "relaxed"
+        },
+        "visemeMap": {
+            "aa": "aa",
+            "ee": "ee",
+            "ih": "ih",
+            "oh": "oh",
+            "ou": "ou"
+        }
+    },
+    {
+        "name": "Test_adb4cf",
+        "type": "vrm",
+        "url": "/vrm-models/Test_adb4cf.vrm",
+        "emotionMap": {
+            "neutral": "neutral",
+            "joy": "happy",
+            "anger": "angry",
+            "sadness": "sad",
+            "surprise": "surprised",
+            "relaxed": "relaxed"
+        },
+        "visemeMap": {
+            "aa": "aa",
+            "ee": "ee",
+            "ih": "ih",
+            "oh": "oh",
+            "ou": "ou"
+        }
+    },
+    {
+        "name": "Test_21480a",
+        "type": "vrm",
+        "url": "/vrm-models/Test_21480a.vrm",
+        "emotionMap": {
+            "neutral": "neutral",
+            "joy": "happy",
+            "anger": "angry",
+            "sadness": "sad",
+            "surprise": "surprised",
+            "relaxed": "relaxed"
+        },
+        "visemeMap": {
+            "aa": "aa",
+            "ee": "ee",
+            "ih": "ih",
+            "oh": "oh",
+            "ou": "ou"
+        }
+    },
+    {
+        "name": "Test_e0d235",
+        "type": "vrm",
+        "url": "/vrm-models/Test_e0d235.vrm",
+        "emotionMap": {
+            "neutral": "neutral",
+            "joy": "happy",
+            "anger": "angry",
+            "sadness": "sad",
+            "surprise": "surprised",
+            "relaxed": "relaxed"
+        },
+        "visemeMap": {
+            "aa": "aa",
+            "ee": "ee",
+            "ih": "ih",
+            "oh": "oh",
+            "ou": "ou"
+        }
+    },
+    {
+        "name": "Yakult_5320ad",
+        "type": "vrm",
+        "url": "/vrm-models/Yakult_5320ad.vrm",
+        "emotionMap": {
+            "neutral": "neutral",
+            "joy": "happy",
+            "anger": "angry",
+            "sadness": "sad",
+            "surprise": "surprised",
+            "relaxed": "relaxed"
+        },
+        "visemeMap": {
+            "aa": "aa",
+            "ee": "ee",
+            "ih": "ih",
+            "oh": "oh",
+            "ou": "ou"
+        }
+    },
+    {
+        "name": "Yakult",
+        "type": "vrm",
+        "url": "/vrm-models/Yakult.vrm",
+        "emotionMap": {
+            "neutral": "neutral",
+            "joy": "happy",
+            "anger": "angry",
+            "sadness": "sad",
+            "surprise": "surprised",
+            "relaxed": "relaxed"
+        },
+        "visemeMap": {
+            "aa": "aa",
+            "ee": "ee",
+            "ih": "ih",
+            "oh": "oh",
+            "ou": "ou"
+        }
+    }
+]

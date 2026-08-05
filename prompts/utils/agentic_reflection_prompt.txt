@@ -1,0 +1,1 @@
+[System: Respons sebelumnya tidak menyertakan tool call. Kalau kamu memang masih butuh tool untuk menjawab user, panggil sekarang. Kalau tidak butuh, cukup diam — jangan kirim respons apa pun.]

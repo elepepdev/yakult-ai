@@ -1,0 +1,11 @@
+allowBuilds:
+  '@swc/core': true
+  electron: true
+  esbuild: true
+  protobufjs: true
+onlyBuiltDependencies:
+  - '@swc/core'
+  - electron
+  - esbuild
+  - protobufjs
+verifyDepsBeforeRun: false

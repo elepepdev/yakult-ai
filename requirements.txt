@@ -58,6 +58,8 @@ pyttsx3==2.99
     # via yakult-mybini (pyproject.toml)
 pyyaml==6.0.3
     # via yakult-mybini (pyproject.toml)
+rapidocr-onnxruntime==1.4.4
+    # via yakult-mybini (pyproject.toml)
 requests==2.32.5
     # via yakult-mybini (pyproject.toml)
 ruamel-yaml==0.19.1
@@ -78,7 +80,7 @@ tomli==2.4.0
     # via yakult-mybini (pyproject.toml)
 torch==2.2.2 ; platform_machine == 'x86_64' and sys_platform == 'darwin'
     # via yakult-mybini (pyproject.toml)
-torch==2.10.0 ; platform_machine == 'arm64' and sys_platform == 'darwin'
+torch==2.11.0 ; platform_machine == 'arm64' and sys_platform == 'darwin'
     # via yakult-mybini (pyproject.toml)
 torch==2.11.0+cpu ; sys_platform != 'darwin'
     # via yakult-mybini (pyproject.toml)

@@ -13,6 +13,9 @@
       "asr": "ASR",
       "tts": "TTS",
       "agent": "Agent",
+      "character": "Character",
+      "system": "System",
+      "advanced": "Advanced",
       "about": "About"
     },
     "general": {
@@ -50,7 +53,8 @@
       "negativeSpeechThreshold": "Negative Speech Threshold",
       "negativeSpeechThresholdDesc": "Confidence level (0-100) below which speech detection stops. Lower values make detection less sensitive",
       "redemptionFrames": "Redemption Frames",
-      "redemptionFramesDesc": "Number of consecutive frames (1-100) needed to confirm speech detection. Higher values reduce noise triggers"
+      "redemptionFramesDesc": "Number of consecutive frames (1-100) needed to confirm speech detection. Higher values reduce noise triggers",
+      "backendConfig": "Backend Configuration"
     },
     "agent": {
       "allowProactiveSpeak": "Allow AI to Speak Proactively",
@@ -59,6 +63,20 @@
       "llmProvider": "AI Provider",
       "model": "Model"
     },
+    "tts": {
+      "voice": "Voice",
+      "fetchingVoices": "Fetching voices...",
+      "selectVoice": "Select voice...",
+      "customVoice": "Or type custom voice name and press Enter",
+      "voicePlaceholder": "Type voice name and press Enter",
+      "noProvider": "No TTS provider configured"
+    },
+    "save": "Save",
+    "reset": "Reset",
+    "schemaLoading": "Loading schema...",
+    "selectSection": "Select section",
+    "showAll": "Show all",
+    "advancedHint": "Advanced settings are managed by the backend server.",
     "about": {
       "title": "Yakult My Bini",
       "version": "Version",

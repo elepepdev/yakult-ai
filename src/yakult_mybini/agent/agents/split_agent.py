@@ -8,7 +8,7 @@ Split Agent v2 — Multi-tool-group routing.
 Flow: User → Route → ToolGroup → results → Persona Agent → response
 """
 
-from typing import AsyncIterator, List, Dict, Any, Optional
+from typing import AsyncIterator, List, Dict, Any, Optional, Callable
 from loguru import logger
 
 from .agent_interface import AgentInterface
@@ -140,6 +140,7 @@ class SplitAgent(AgentInterface):
         group_name: str,
         user_text: str,
         recent_context: List[Dict[str, Any]],
+        on_status_update: Optional[Callable[[Dict[str, Any]], None]] = None,
     ) -> ToolResult:
         """Run a ToolAgent for a specific tool group with minimal prompt."""
         group = self._tool_groups[group_name]
@@ -169,6 +170,7 @@ class SplitAgent(AgentInterface):
         return await group_agent.process(
             user_message=user_text,
             conversation_context=recent_context,
+            on_status_update=on_status_update,
         )
 
     def handle_interrupt(self, heard_response: str) -> None:

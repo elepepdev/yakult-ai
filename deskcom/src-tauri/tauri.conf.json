@@ -1,0 +1,45 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicegui/nicegui/main/tauri/tauri.conf.json",
+  "productName": "Yakult My Bini",
+  "version": "1.2.1",
+  "identifier": "com.yakult.mybini",
+  "build": {
+    "frontendDist": "../dist/web",
+    "devUrl": "http://localhost:3000",
+    "beforeDevCommand": "npm run dev:web",
+    "beforeBuildCommand": "npm run build:web"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Yakult My Bini",
+        "width": 900,
+        "height": 670,
+        "transparent": true,
+        "decorations": false,
+        "resizable": true,
+        "alwaysOnTop": true,
+        "focusable": true,
+        "skipTaskbar": false
+      }
+    ],
+    "security": {
+      "csp": null
+    },
+    "trayIcon": {
+      "iconPath": "icons/icon.png",
+      "iconAsTemplate": true
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

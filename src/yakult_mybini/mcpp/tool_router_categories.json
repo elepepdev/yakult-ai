@@ -1,0 +1,282 @@
+{
+  "waktu": {
+    "description": "Waktu, tanggal, dan zona waktu",
+    "patterns": [
+      "jam berapa",
+      "sekarang jam",
+      "tanggal? berapa",
+      "hari ini",
+      "waktu (sekarang|saat ini)",
+      "pukul berapa",
+      "what time",
+      "current time",
+      "current date",
+      "what.*date",
+      "timezone",
+      "zona waktu",
+      "convert.*time",
+      "konversi.*waktu"
+    ],
+    "keywords": ["jam", "waktu", "tanggal", "hari", "pukul", "time", "date", "timezone", "zona"],
+    "tools": {
+      "time": ["get_current_time", "convert_timezone"]
+    }
+  },
+  "musik": {
+    "description": "Memutar musik, YouTube, dan audio",
+    "patterns": [
+      "putar (lagu|musik|audio|video|playlist)",
+      "mainkan (lagu|musik)",
+      "cari.*(lagu|musik|youtube|video|playlist)",
+      "play (music|song|youtube|video)",
+      "lagu (indonesia|barat|pop|rock|dangdut|kesukaan|random|acak)",
+      "youtube",
+      "nyanyi",
+      "karaoke",
+      "next lagu",
+      "lagu berikutnya",
+      "lagu selanjutnya",
+      "ganti lagu",
+      "skip",
+      "stop musik",
+      "berhenti",
+      "pause",
+      "resume",
+      "volume"
+    ],
+    "keywords": ["lagu", "musik", "youtube", "putar", "mainkan", "nyanyi", "play", "song", "music", "video", "playlist", "audio", "dengarkan", "karaoke"],
+    "tools": {
+      "desktop-controller": ["search_youtube", "play_youtube"]
+    }
+  },
+  "cari": {
+    "description": "Mencari informasi di web",
+    "patterns": [
+      "cari(in)? (tentang|info|informasi)? .+",
+      "search (for|about)? .+",
+      "googling",
+      "google (search|cari)? .+",
+      "cek (info|berita|tentang) .+",
+      "berita (terkini|terbaru|hari ini|tentang)",
+      "news about",
+      "apa itu",
+      "siapa itu",
+      "apa sih",
+      "carikan",
+      "tolong cari",
+      "kasih tahu (tentang|soal)",
+      "web.?fetch",
+      "fetch.*url",
+      "baca.*(artikel|halaman|web|page)"
+    ],
+    "keywords": ["cari", "search", "google", "googling", "berita", "news", "info", "informasi", "tentang", "apa", "siapa", "cek", "fetch", "baca", "artikel", "web", "browsing"],
+    "tools": {
+      "desktop-controller": ["web_search", "search_news", "web_fetch"],
+      "ddg-search": ["duckduckgo_search", "duckduckgo_news_search"]
+    }
+  },
+  "aplikasi": {
+    "description": "Membuka, menutup, dan mengelola aplikasi",
+    "patterns": [
+      "buka (aplikasi|program|app) .+",
+      "open (app|application|program) .+",
+      "jalankan .+",
+      "start .+",
+      "tutup (aplikasi|program|app) .+",
+      "close .+",
+      "focus .+",
+      "buka (url|link|website|situs) .+",
+      "buka browser",
+      "buka firefox",
+      "buka terminal",
+      "buka vscode",
+      "buka discord",
+      "buka chrome",
+      "open (url|link|website|site) .+"
+    ],
+    "keywords": ["buka", "open", "jalankan", "start", "tutup", "close", "focus", "aplikasi", "program", "app", "browser", "firefox", "terminal", "vscode", "discord", "url", "link", "website"],
+    "tools": {
+      "desktop-controller": ["open_app", "focus_app", "close_app", "open_url"]
+    }
+  },
+  "desktop": {
+    "description": "Mengelola jendela dan elemen desktop",
+    "patterns": [
+      "cari (jendela|window|element)",
+      "find (window|element)",
+      "list (windows|jendela|elements)",
+      "daftar (jendela|window)",
+      "active window",
+      "current window",
+      "jendela (aktif|saat ini)",
+      "click element",
+      "klik element",
+      "screen size",
+      "ukuran layar",
+      "resolusi layar"
+    ],
+    "keywords": ["window", "jendela", "element", "desktop", "screen", "layar", "aktif", "active", "resolusi"],
+    "tools": {
+      "desktop-controller": ["screen_size", "get_active_window", "find_window", "click_window", "focus_window", "list_windows", "find_element", "click_element", "list_clickable_elements", "x11_active_window"]
+    }
+  },
+  "input": {
+    "description": "Mengetik, klik mouse, dan shortcut keyboard",
+    "patterns": [
+      "ketik(kan)? .+",
+      "tulis(kan)? .+",
+      "type .+",
+      "tekan (enter|esc|escape|tab|spasi|backspace)",
+      "press (enter|esc|escape|tab|space|backspace)",
+      "klik (di|pada|koordinat|titik) .+",
+      "click (at|on|coordinate) .+",
+      "shortcut .+",
+      "hotkey .+",
+      "ctrl.?[\\+c]",
+      "ctrl.?[\\+v]",
+      "copy paste",
+      "scroll"
+    ],
+    "keywords": ["ketik", "tulis", "type", "tekan", "press", "klik", "click", "shortcut", "hotkey", "keyboard", "mouse", "enter", "escape", "tab", "ctrl", "scroll", "kursor", "cursor"],
+    "tools": {
+      "desktop-controller": ["type_text", "press_key", "hotkey", "click", "x11_click", "x11_type", "x11_key", "x11_hotkey"]
+    }
+  },
+  "sistem": {
+    "description": "Menjalankan perintah sistem dan informasi OS",
+    "patterns": [
+      "run (command|perintah|shell) .+",
+      "jalan(kan)? (command|perintah|shell) .+",
+      "terminal .+",
+      "sudo .+",
+      "detect os",
+      "deteksi os",
+      "sistem operasi",
+      "info sistem",
+      "os info",
+      "operating system"
+    ],
+    "keywords": ["command", "perintah", "shell", "terminal", "sudo", "os", "sistem", "operasi", "run", "jalankan"],
+    "tools": {
+      "desktop-controller": ["run_command", "run_sudo_command", "detect_os"]
+    }
+  },
+  "update": {
+    "description": "Update sistem dan manajemen paket",
+    "patterns": [
+      "update (sistem|system|packages|paket)",
+      "upgrade (sistem|system|all)",
+      "install (package|paket|program|aplikasi) .+",
+      "pasang (package|paket|program) .+",
+      "uninstall (package|paket) .+",
+      "hapus (package|paket|program) .+",
+      "remove (package|paket)",
+      "search package",
+      "cari package",
+      "cari paket",
+      "pkgbuild",
+      "list installed",
+      "daftar (paket|package) (terinstall|terpasang)"
+    ],
+    "keywords": ["update", "upgrade", "install", "pasang", "uninstall", "hapus", "remove", "package", "paket", "pkgbuild", "aur", "pacman"],
+    "tools": {
+      "desktop-controller": ["update_system", "install_package", "remove_package", "search_packages", "get_pkgbuild"]
+    }
+  },
+  "file": {
+    "description": "Operasi file dan folder",
+    "patterns": [
+      "hapus (file|folder|berkas) .+",
+      "delete (file|folder|directory) .+",
+      "baca (file|berkas) .+",
+      "read (file|berkas) .+",
+      "tulis (file|berkas) .+",
+      "write (file|berkas) .+",
+      "list (file|folder|directory|berkas)",
+      "daftar (file|folder|berkas)",
+      "buat (file|folder|direktori) .+",
+      "create (file|folder|directory) .+",
+      "rename (file|folder) .+",
+      "pindah(kan)? (file|folder) .+",
+      "move (file|folder) .+",
+      "copy (file|folder) .+",
+      "sal[ai]n (file|folder)"
+    ],
+    "keywords": ["file", "folder", "direktori", "directory", "berkas", "hapus", "delete", "baca", "read", "tulis", "write", "buat", "create", "rename", "pindah", "move", "copy", "sal[ai]n", "list", "daftar"],
+    "tools": {
+      "desktop-controller": ["delete_file"],
+      "filesystem": ["read_file", "write_file", "list_directory", "search_files", "get_file_info"]
+    }
+  },
+  "github": {
+    "description": "Operasi GitHub (PR, issues, repositori)",
+    "patterns": [
+      "github",
+      "pull request",
+      "pr",
+      "issue",
+      "repo(sitori)?",
+      "repository",
+      "commit",
+      "push",
+      "clone",
+      "star",
+      "fork",
+      "gist"
+    ],
+    "keywords": ["github", "repo", "repository", "pull request", "pr", "issue", "commit", "push", "clone", "star", "fork", "gist"],
+    "tools": {
+      "github": []
+    }
+  },
+  "memory": {
+    "description": "Mengingat fakta tentang user",
+    "patterns": [
+      "ingat(kan)? (bahwa|kalau) .+",
+      "simpan (ini|info) .+",
+      "catat .+",
+      "jangan lupa .+",
+      "remember (that|this) .+",
+      "store (this|memory|fact|info) .+",
+      "memorize .+",
+      "simpan memori",
+      "simpen (ini|fact|info)"
+    ],
+    "keywords": ["ingat", "simpan", "catat", "lupa", "remember", "store", "memorize", "memory", "memori", "fact"],
+    "tools": {
+      "desktop-controller": ["store_memory"]
+    }
+  },
+  "osu": {
+    "description": "OSU! beatmap dan gameplay",
+    "patterns": [
+      "osu",
+      "main osu",
+      "play osu",
+      "beatmap",
+      "list (osu|songs|maps)",
+      "daftar (osu|lagu|map)",
+      "maen osu",
+      "osu map"
+    ],
+    "keywords": ["osu", "beatmap", "map", "song", "main", "play"],
+    "tools": {
+      "desktop-controller": ["list_osu_maps", "play_osu_beatmap"]
+    }
+  },
+  "grid": {
+    "description": "Grid overlay untuk screenshot",
+    "patterns": [
+      "grid (spec|overlay|setting|pengaturan)",
+      "ubah grid",
+      "disable grid",
+      "disable overlay",
+      "set grid",
+      "grid (8x6|10x10|6x4)"
+    ],
+    "keywords": ["grid", "overlay", "spec"],
+    "tools": {
+      "desktop-controller": ["set_grid_spec", "disable_grid_overlay"]
+    }
+  }
+}

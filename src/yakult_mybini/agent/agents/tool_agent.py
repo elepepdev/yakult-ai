@@ -7,7 +7,8 @@ Menggunakan LLM dengan rate limit tinggi (Groq) agar tool calls cepat dan murah.
 """
 
 import uuid
-from typing import Dict, Any, List, Optional
+import asyncio
+from typing import Dict, Any, List, Optional, Callable
 from dataclasses import dataclass, field
 from loguru import logger
 
@@ -89,6 +90,7 @@ class ToolAgent:
         self,
         user_message: str,
         conversation_context: Optional[List[Dict[str, Any]]] = None,
+        on_status_update: Optional[Callable[[Dict[str, Any]], None]] = None,
     ) -> ToolResult:
         """Process a user message with full tool access.
 
@@ -218,6 +220,14 @@ class ToolAgent:
                             break
                         else:
                             tool_statuses_batch.append(update)
+                            if on_status_update:
+                                try:
+                                    if asyncio.iscoroutinefunction(on_status_update):
+                                        await on_status_update(update)
+                                    else:
+                                        on_status_update(update)
+                                except Exception as e:
+                                    logger.warning(f"Error in on_status_update callback: {e}")
                 except StopAsyncIteration:
                     logger.warning("ToolAgent: Tool executor finished without final marker")
 

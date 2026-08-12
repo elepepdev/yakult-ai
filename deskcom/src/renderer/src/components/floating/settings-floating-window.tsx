@@ -8,7 +8,6 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LuX } from 'react-icons/lu';
 import { useDraggable } from '@/hooks/electron/use-draggable';
-import { WashiTape } from '@/components/ui/washi-tape';
 import General from './setting/general';
 import Live2D from './setting/live2d';
 import ASR from './setting/asr';
@@ -128,15 +127,15 @@ function SettingsFloatingWindow({ open, onClose }: SettingsFloatingWindowProps) 
 
             <Box flex={1} minW={0}>
               <Tabs.ContentGroup>
-                <Tabs.Content value="general" lazyMount unmountOnExit><General /></Tabs.Content>
-                <Tabs.Content value="live2d" lazyMount unmountOnExit><Live2D /></Tabs.Content>
-                <Tabs.Content value="asr" lazyMount unmountOnExit><ASR /></Tabs.Content>
-                <Tabs.Content value="tts" lazyMount unmountOnExit><TTS /></Tabs.Content>
-                <Tabs.Content value="agent" lazyMount unmountOnExit><Agent /></Tabs.Content>
-                <Tabs.Content value="character" lazyMount unmountOnExit><Character /></Tabs.Content>
-                <Tabs.Content value="system" lazyMount unmountOnExit><System /></Tabs.Content>
-                <Tabs.Content value="advanced" lazyMount unmountOnExit><Advanced /></Tabs.Content>
-                <Tabs.Content value="about" lazyMount unmountOnExit><About /></Tabs.Content>
+                <Tabs.Content value="general"><General /></Tabs.Content>
+                <Tabs.Content value="live2d"><Live2D /></Tabs.Content>
+                <Tabs.Content value="asr"><ASR /></Tabs.Content>
+                <Tabs.Content value="tts"><TTS /></Tabs.Content>
+                <Tabs.Content value="agent"><Agent /></Tabs.Content>
+                <Tabs.Content value="character"><Character /></Tabs.Content>
+                <Tabs.Content value="system"><System /></Tabs.Content>
+                <Tabs.Content value="advanced"><Advanced /></Tabs.Content>
+                <Tabs.Content value="about"><About /></Tabs.Content>
               </Tabs.ContentGroup>
             </Box>
           </Box>

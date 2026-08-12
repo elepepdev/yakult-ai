@@ -25,7 +25,7 @@ function usePrefersReducedMotion(): boolean {
  * and bursts apart when the user focuses the input box.
  */
 export function ThoughtBubble() {
-  const { subconsciousText, dismissSubconscious } = useSubtitle();
+  const { subconsciousText } = useSubtitle();
   const reducedMotion = usePrefersReducedMotion();
   const headPos = useVrmHeadPosition();
   const [phase, setPhase] = useState<BubblePhase>('hidden');

@@ -1,8 +1,8 @@
-import { Checkbox } from '@chakra-ui/react';
+import { Checkbox, type CheckboxCheckedChangeDetails } from '@chakra-ui/react';
 
 interface SketchCheckboxProps {
   checked: boolean;
-  onCheckedChange: (e: { checked: boolean }) => void;
+  onCheckedChange: (e: CheckboxCheckedChangeDetails) => void;
   colorPalette?: string;
 }
 

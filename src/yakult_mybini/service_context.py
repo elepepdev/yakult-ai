@@ -401,27 +401,33 @@ class ServiceContext:
         self.character_config = config.character_config
 
     def init_model(self, model_name: str, model_type: str = "live2d") -> None:
-        """Initialize character model (Live2D or VRM)."""
+        """Initialize character model (Live2D, VRM, or Orb)."""
         logger.info(f"Initializing model: {model_name} (type: {model_type})")
         try:
-            if model_type == "vrm":
-                from .character_model import VRMModel
+            from .character_model import create_character_model
 
-                self.vrm_model = VRMModel(model_name)
-                self.live2d_model = None
-                logger.info(f"VRM model '{model_name}' loaded successfully.")
+            # Clear all model slots first, then set the active one.
+            self.live2d_model = None
+            self.vrm_model = None
+            self.orb_model = None
+
+            model = create_character_model(model_name, model_type)
+            if model_type == "vrm":
+                self.vrm_model = model
+            elif model_type == "orb":
+                self.orb_model = model
             else:
-                self.live2d_model = Live2dModel(model_name)
-                self.vrm_model = None
-                logger.info(f"Live2D model '{model_name}' loaded successfully.")
+                self.live2d_model = model
+            logger.info(f"{model_type} model '{model_name}' loaded successfully.")
             self.character_config.live2d_model_name = model_name
             self.character_config.model_type = model_type
         except Exception as e:
             logger.critical(f"Error initializing model '{model_name}': {e}")
             logger.critical("Try to proceed without character model...")
-            # Clear both models to prevent stale Live2D fallback
+            # Clear all models to prevent stale fallbacks
             self.vrm_model = None
             self.live2d_model = None
+            self.orb_model = None
 
     def init_live2d(self, live2d_model_name: str) -> None:
         """Backward-compatible wrapper that defaults to Live2D type."""

@@ -330,6 +330,10 @@ function WebSocketHandler({ children }: { children: React.ReactNode }) {
           });
         }
         break;
+      case 'ai-mode-updated':
+        // Confirmation that the backend switched AI mode
+        console.log('AI mode updated:', message.mode);
+        break;
       case 'force-new-message':
         setForceNewMessage(true);
         break;
@@ -419,7 +423,7 @@ function WebSocketHandler({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      if (detail?.expressions && wsService.getState() === 'OPEN') {
+      if (detail?.expressions && wsService.getCurrentState() === 'OPEN') {
         wsService.sendMessage({
           type: 'discover-vrm-expressions',
           expressions: detail.expressions,

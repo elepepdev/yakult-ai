@@ -14,11 +14,9 @@ import {
   LuSkipForward,
   LuSquare,
   LuMusic,
-  LuMonitorPlay,
 } from 'react-icons/lu';
 import { Slider } from '@/components/ui/slider';
 import { useDraggable } from '@/hooks/electron/use-draggable';
-import { WashiTape } from '@/components/ui/washi-tape';
 import { useMusicPlayer } from '@/context/music-player-context';
 
 function formatTime(seconds: number): string {
@@ -45,7 +43,6 @@ function MusicPlayerWindow() {
     feedbackDislike,
     isRepeat,
     toggleRepeat,
-    playMV,
   } = useMusicPlayer();
 
   const { elementRef, isDragging, handleMouseDown } = useDraggable({

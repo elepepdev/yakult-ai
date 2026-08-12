@@ -18,11 +18,9 @@ export const ConfigSchemaContext = createContext<ConfigSchemaState>(defaultState
 
 export function ConfigSchemaProvider({ children }: { children: ReactNode }) {
   const [schema, setSchema] = useState<any>(null);
-  const [refreshVersion, setRefreshVersion] = useState(0);
   const [refreshListeners, setRefreshListeners] = useState<Array<() => void>>([]);
 
   const refreshSchema = useCallback(() => {
-    setRefreshVersion((v) => v + 1);
     refreshListeners.forEach((cb) => cb());
   }, [refreshListeners]);
 

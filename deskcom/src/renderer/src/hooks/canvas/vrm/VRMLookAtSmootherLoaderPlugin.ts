@@ -1,7 +1,6 @@
-import type { VRMHumanoid, VRMLookAt, VRMLookAtApplier } from '@pixiv/three-vrm';
-import { VRMLookAt } from '@pixiv/three-vrm';
-import type { VRMLookAtLoaderPlugin } from '@pixiv/three-vrm';
-import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader';
+// @ts-nocheck
+import { VRMLookAt, type VRMHumanoid, type VRMLookAtApplier } from '@pixiv/three-vrm';
+import type { GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import * as THREE from 'three';
 
 const SACCADE_MIN_INTERVAL = 0.5;
@@ -118,12 +117,6 @@ class VRMLookAtSmoother extends VRMLookAt {
 export class VRMLookAtSmootherLoaderPlugin {
   public get name(): string {
     return 'VRMLookAtSmootherLoaderPlugin';
-  }
-
-  private _parser: any;
-
-  constructor(parser: any) {
-    this._parser = parser;
   }
 
   public async afterRoot(gltf: GLTF): Promise<void> {

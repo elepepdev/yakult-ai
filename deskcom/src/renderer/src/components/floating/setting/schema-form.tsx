@@ -41,7 +41,7 @@ function LeafField({ node, value, onChange }: { node: any; value: any; onChange:
   }
 
   if (node.type === 'enum') {
-    const options = createListCollection({
+    const options = createListCollection<{ label: string; value: string }>({
       items: (node.options || []).map((o: string) => ({ label: o, value: o })),
     });
     return (
@@ -178,7 +178,7 @@ function ArrayEditor({ value, onChange }: { value: any[]; onChange: (v: any[]) =
           placeholder="Add item and press Enter"
           css={inputStyles}
         />
-        <Button size="sm" onClick={add} colorScheme="blue">Add</Button>
+        <Button size="sm" onClick={add} colorPalette="blue">Add</Button>
       </Box>
     </Box>
   );
@@ -196,7 +196,7 @@ function ObjectSection({ node, values, onChange }: { node: any; values: Record<s
   }
 
   const isWide = node.children.length > WIDE_SECTION_THRESHOLD;
-  const sectionOptions = useMemo(() => createListCollection({
+  const sectionOptions = useMemo(() => createListCollection<{ label: string; value: string }>({
     items: [
       { label: t('settings.showAll'), value: '' },
       ...node.children
@@ -229,7 +229,7 @@ function ObjectSection({ node, values, onChange }: { node: any; values: Record<s
             </Text>
           </Box>
         </Collapsible.Trigger>
-        <Collapsible.Content lazyMount unmountOnExit>
+        <Collapsible.Content>
           {isWide && (
             <Box px={3} pt={3}>
               <Select.Root
@@ -376,10 +376,10 @@ export default function SchemaForm({ rootPath, only }: SchemaFormProps) {
       <Box display="flex" gap={2} pt={2}>
         <Button
           size="sm"
-          colorScheme="blue"
+          colorPalette="blue"
           onClick={save}
           disabled={!hasDirty || saving}
-          isLoading={saving}
+          loading={saving}
         >
           {t('settings.save')}
         </Button>

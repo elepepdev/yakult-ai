@@ -9,14 +9,13 @@ import {
 } from '@chakra-ui/react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FiTrash2, FiPlus, FiCopy, FiCheck } from 'react-icons/fi';
+import { FiTrash2, FiPlus } from 'react-icons/fi';
 import { LuX } from 'react-icons/lu';
 import { formatDistanceToNow } from 'date-fns';
-import { FaTools, FaCheck, FaTimes, FaChevronDown, FaChevronRight, FaTerminal, FaShareAlt } from 'react-icons/fa';
+import { FaTools, FaCheck, FaTimes, FaChevronDown, FaChevronRight, FaTerminal } from 'react-icons/fa';
 import { useDraggable } from '@/hooks/electron/use-draggable';
 import { useChatHistoryFloating } from '@/hooks/floating/use-chat-history-floating';
 import { FormattedText } from '@/components/ui/formatted-text';
-import { WashiTape } from '@/components/ui/washi-tape';
 import { useMusicPlayer } from '@/context/music-player-context';
 
 interface ChatHistoryFloatingWindowProps {
@@ -44,13 +43,6 @@ function ChatHistoryFloatingWindow({ open, onClose }: ChatHistoryFloatingWindowP
   });
 
   const [expandedToolIds, setExpandedToolIds] = useState<Set<string>>(new Set());
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  const copyPrompt = (id: string, content: string) => {
-    navigator.clipboard.writeText(content);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId((cur) => (cur === id ? null : cur)), 2000);
-  };
 
   const toggleToolExpand = useMemo(() => (toolId: string) => {
     setExpandedToolIds((prev) => {

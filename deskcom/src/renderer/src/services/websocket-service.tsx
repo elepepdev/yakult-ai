@@ -84,6 +84,9 @@ export interface MessageEvent {
   results?: any[];
   model_info?: ModelInfo;
   model_type?: string;
+  emotionMap?: any;
+  start_time?: number;
+  mode?: string;
   conf_name?: string;
   conf_uid?: string;
   uids?: string[];

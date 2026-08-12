@@ -7,13 +7,15 @@ import {
   Spinner,
   HStack,
   VStack,
-  useToast,
 } from '@chakra-ui/react';
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { LuX, LuListMusic, LuPlus, LuPlay, LuShuffle, LuDownload, LuArrowLeft, LuVideo } from 'react-icons/lu';
 import { FiTrash2, FiEdit2, FiCheck } from 'react-icons/fi';
 import { useDraggable } from '@/hooks/electron/use-draggable';
-import { usePlaylistFloating, PlaylistSong, SearchResult } from '@/hooks/floating/use-playlist-floating';import { WashiTape } from '@/components/ui/washi-tape';
+import { usePlaylistFloating, PlaylistSong, SearchResult } from '@/hooks/floating/use-playlist-floating';
+import { WashiTape } from '@/components/ui/washi-tape';
+import { toaster } from '@/components/ui/toaster';
+import { useMusicPlayer } from '@/context/music-player-context';
 import { wsService } from '@/services/websocket-service';
 
 function formatDuration(d: number): string {

@@ -18,7 +18,6 @@ import { useState, useCallback, useMemo } from 'react';
 import { useInputSubtitle } from '@/hooks/electron/use-input-subtitle';
 import { useChatHistory } from '@/context/chat-history-context';
 import { FormattedText } from '@/components/ui/formatted-text';
-import { useTypewriter } from '@/hooks/utils/use-typewriter';
 import { useCamera } from '@/context/camera-context';
 import { useScreenCaptureContext } from '@/context/screen-capture-context';
 import { useBrowser } from '@/context/browser-context';
@@ -101,7 +100,6 @@ export function WebInputSubtitle() {
   );
   const hasRunningTools = runningToolCalls.length > 0;
   const isProcessing = aiState === 'thinking-speaking' || aiState === 'loading';
-  const typedLastAIMessage = useTypewriter(lastAIMessage ?? '');
 
   const iconButtonStyle = {
     size: 'xs' as const,
@@ -125,8 +123,10 @@ export function WebInputSubtitle() {
         border="1.5px solid"
         borderColor="var(--sk-outline)"
         bg="var(--sk-paper-glass)"
-        backdropFilter="blur(18px)"
-        WebkitBackdropFilter="blur(18px)"
+        css={{
+          backdropFilter: 'blur(18px)',
+          WebkitBackdropFilter: 'blur(18px)',
+        }}
         boxShadow="0 8px 40px rgba(0,0,0,0.45)"
       >
         {/* Floating window toggle buttons */}

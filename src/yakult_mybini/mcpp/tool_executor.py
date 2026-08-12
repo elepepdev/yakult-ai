@@ -9,6 +9,8 @@ from typing import (
     Literal,
     Union,
     AsyncIterator,
+    Optional,
+    Callable,
 )
 
 from .types import ToolCallObject
@@ -20,6 +22,10 @@ PACKAGE_TOOLS = {"install_package", "remove_package", "update_system"}
 BACKGROUND_COMMANDS = {"run_command", "run_sudo_command"}
 
 DANGEROUS_COMMANDS = ["rm", "rmdir", "del", "format", "dd", "mkfs", "shutdown", "reboot", "poweroff"]
+
+from .file_tools import FILE_TOOLS, run_file_operation
+
+ApprovalCallback = Callable[[Dict[str, Any]], Any]
 
 
 class ToolExecutor:
@@ -33,6 +39,33 @@ class ToolExecutor:
         self._mcp_client = mcp_client
         self._tool_manager = tool_manager
         self._sudo_password = sudo_password
+        # Optional callback wired by the websocket layer: called with an
+        # approval payload, must resolve to a truthy value to allow the
+        # dangerous operation, falsy to cancel it.
+        self._approval_callback: Optional[ApprovalCallback] = None
+
+    def set_approval_callback(self, callback: Optional[ApprovalCallback]) -> None:
+        """Set the user-approval callback for dangerous operations."""
+        self._approval_callback = callback
+
+    async def _request_approval(self, payload: Dict[str, Any]) -> bool:
+        """Ask the user to approve a dangerous operation.
+
+        Returns True if approved, False otherwise (denied / timeout / no UI).
+        """
+        if not self._approval_callback:
+            logger.warning(
+                "No approval callback configured — denying dangerous tool operation."
+            )
+            return False
+        try:
+            result = self._approval_callback(payload)
+            if asyncio.iscoroutine(result):
+                result = await result
+            return bool(result)
+        except Exception as e:
+            logger.error(f"Approval callback error: {e}")
+            return False
 
     def parse_tool_call(self, call: Union[Dict[str, Any], ToolCallObject]) -> tuple:
         """Parse tool call from different formats.
@@ -242,6 +275,16 @@ class ToolExecutor:
             # ---- Direct execution for background commands with output streaming ----
             if tool_name in BACKGROUND_COMMANDS:
                 async for result_item in self._execute_background_command(tool_name, tool_id, tool_input, caller_mode):
+                    yield result_item
+                    if result_item.get("type") == "final_tool_results":
+                        tool_results_for_llm.extend(result_item.get("results", []))
+                continue
+
+            # ---- Local file tools (read/write/delete) with approval gate ----
+            if tool_name in FILE_TOOLS:
+                async for result_item in self._execute_file_tool(
+                    tool_name, tool_id, tool_input, caller_mode
+                ):
                     yield result_item
                     if result_item.get("type") == "final_tool_results":
                         tool_results_for_llm.extend(result_item.get("results", []))
@@ -710,6 +753,53 @@ class ToolExecutor:
             formatted_result = self.format_tool_result(caller_mode, tool_id, f"Error: {e}", True)
             if formatted_result:
                 yield {"type": "final_tool_results", "results": [formatted_result]}
+
+    async def _execute_file_tool(
+        self,
+        tool_name: str,
+        tool_id: str,
+        tool_input: Any,
+        caller_mode: Literal["Claude", "OpenAI", "Prompt"],
+    ) -> AsyncIterator[Dict[str, Any]]:
+        """Execute a local file tool (read_file/write_file/delete_file).
+
+        Dangerous operations (write/delete) are gated behind a user approval
+        callback wired by the websocket layer.
+        """
+        yield {
+            "type": "tool_call_status",
+            "tool_id": tool_id,
+            "tool_name": tool_name,
+            "status": "running",
+            "content": "",
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z",
+        }
+        await asyncio.sleep(0.05)
+
+        try:
+            is_error, text_content = await run_file_operation(
+                tool_name=tool_name,
+                tool_input=tool_input if isinstance(tool_input, dict) else {},
+                approval_callback=self._approval_callback,
+            )
+        except Exception as e:
+            logger.exception(f"File tool '{tool_name}' failed: {e}")
+            is_error, text_content = True, f"Error: {e}"
+
+        yield {
+            "type": "tool_call_status",
+            "tool_id": tool_id,
+            "tool_name": tool_name,
+            "status": "error" if is_error else "completed",
+            "content": text_content if not is_error else f"Error: {text_content}",
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z",
+        }
+
+        formatted_result = self.format_tool_result(
+            caller_mode, tool_id, text_content, is_error
+        )
+        if formatted_result:
+            yield {"type": "final_tool_results", "results": [formatted_result]}
 
     async def run_single_tool(
         self, tool_name: str, tool_id: str, tool_input: Any

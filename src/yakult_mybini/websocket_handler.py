@@ -89,6 +89,9 @@ class WebSocketHandler:
         self.default_context_cache = default_context_cache
         self.received_data_buffers: Dict[str, np.ndarray] = {}
 
+        # Pending user approvals: approval_id -> asyncio.Future[bool]
+        self._pending_approvals: Dict[str, asyncio.Future] = {}
+
         # Message handlers mapping
         self._message_handlers = self._init_message_handlers()
 
@@ -147,6 +150,7 @@ class WebSocketHandler:
             "restart-backend": self._handle_restart_backend,
             "discover-vrm-expressions": self._handle_discover_vrm_expressions,
             "set-ai-mode": self._handle_set_ai_mode,
+            "tool-approval-response": self._handle_tool_approval_response,
         }
 
     async def handle_new_connection(
@@ -178,6 +182,20 @@ class WebSocketHandler:
             await self._store_client_data(
                 websocket, client_uid, session_service_context, platform
             )
+
+            # Wire the tool executor's approval callback to this client so
+            # dangerous operations (file write/delete) ask the user first.
+            te = session_service_context.tool_executor
+            if te is not None:
+                te.set_approval_callback(
+                    lambda payload, uid=client_uid, ws=websocket: self._request_approval(
+                        ws, uid, payload
+                    )
+                )
+                logger.info(
+                    f"Approval callback wired for client {client_uid} "
+                    f"(dangerous tool ops now require user approval)"
+                )
 
             await self._send_initial_messages(
                 websocket, client_uid, session_service_context
@@ -337,6 +355,68 @@ class WebSocketHandler:
             if msg_type != "frontend-playback-complete":
                 logger.warning(f"Unknown message type: {msg_type}")
 
+    async def _request_approval(
+        self,
+        websocket: WebSocket,
+        client_uid: str,
+        payload: dict,
+    ) -> bool:
+        """Send an approval request to the client and wait for the response.
+
+        Returns True if the user approved, False if denied / timed out.
+        """
+        approval_id = f"appr_{client_uid[:8]}_{len(self._pending_approvals)}_{os.urandom(3).hex()}"
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future = loop.create_future()
+        self._pending_approvals[approval_id] = future
+
+        try:
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "tool-approval-request",
+                        "approval_id": approval_id,
+                        **payload,
+                    }
+                )
+            )
+            # Wait up to 120s for the user to decide, then default to deny.
+            approved = await asyncio.wait_for(future, timeout=120.0)
+            logger.info(
+                f"Approval {approval_id} for '{payload.get('tool_name')}' "
+                f"{'APPROVED' if approved else 'DENIED'}"
+            )
+            return bool(approved)
+        except asyncio.TimeoutError:
+            logger.warning(
+                f"Approval {approval_id} timed out after 120s — treating as DENIED"
+            )
+            return False
+        except Exception as e:
+            logger.error(f"Approval request failed for {approval_id}: {e}")
+            return False
+        finally:
+            self._pending_approvals.pop(approval_id, None)
+
+    async def _handle_tool_approval_response(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        """Resolve a pending approval with the user's accept/deny decision."""
+        approval_id = data.get("approval_id")
+        approved = bool(data.get("approved"))
+        future = self._pending_approvals.get(approval_id)
+        if future is None:
+            logger.warning(
+                f"Approval response for unknown/expired id '{approval_id}' (client {client_uid})"
+            )
+            return
+        if not future.done():
+            future.set_result(approved)
+            logger.info(
+                f"User responded to approval '{approval_id}': "
+                f"{'approved' if approved else 'denied'}"
+            )
+
     async def _handle_group_operation(
         self, websocket: WebSocket, client_uid: str, data: dict
     ) -> None:
@@ -380,6 +460,13 @@ class WebSocketHandler:
         self.client_contexts.pop(client_uid, None)
         self.client_platforms.pop(client_uid, None)
         self.received_data_buffers.pop(client_uid, None)
+
+        # Cancel any pending approvals for this client (default to denied)
+        for approval_id, future in list(self._pending_approvals.items()):
+            if approval_id.startswith(f"appr_{client_uid[:8]}_") and not future.done():
+                future.set_result(False)
+                self._pending_approvals.pop(approval_id, None)
+        logger.info(f"Cleared pending approvals for {client_uid}")
         if client_uid in self.current_conversation_tasks:
             task = self.current_conversation_tasks[client_uid]
             if task and not task.done():

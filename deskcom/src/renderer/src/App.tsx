@@ -37,6 +37,7 @@ import { useWebSocket } from "./context/websocket-context";
 
 import { StageLayoutProvider } from "./context/stage-layout-context";
 import { StageQuickBar } from "./components/floating/stage-quick-bar";
+import ApprovalFloatingWindow from "./components/floating/approval-floating-window";
 
 function AppContent(): JSX.Element {
   useIpcHandlers();
@@ -98,6 +99,7 @@ function AppContent(): JSX.Element {
       {isElectron ? <InputSubtitle /> : <WebInputSubtitle />}
       <MusicPlayerWindow />
       <MVWindow />
+      <ApprovalFloatingWindow />
     </Box>
   );
 }

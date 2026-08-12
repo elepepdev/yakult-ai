@@ -17,7 +17,7 @@ ROUTER_SYSTEM = """Kamu adalah router. Klasifikasikan pesan user ke SATU kategor
 - package: install/hapus/update software, cari package
 - memory: simpan/ingat fakta, todo list, catatan
 - youtube: cari/putar lagu, video, musik
-- file: hapus file atau folder
+- file: baca, tulis, atau hapus file/folder
 - display: atur grid overlay layar
 - vision: baca teks dari layar atau file gambar (OCR)
 - none: sapaan, obrolan biasa, pertanyaan umum, hitungan
@@ -135,11 +135,20 @@ def get_default_groups() -> Dict[str, ToolGroup]:
         ),
         "file": ToolGroup(
             name="file",
-            description="Delete files or directories",
-            tool_names=["delete_file"],
+            description="Read, write, and delete files and directories",
+            tool_names=["read_file", "write_file", "delete_file"],
             system_prompt=(
-                "Kamu adalah file manager. Tugasmu menghapus file atau direktori. "
-                "Gunakan delete_file. Hati-hati dengan force=True."
+                "Kamu adalah file manager. Tugasmu membaca, menulis, dan menghapus "
+                "file atau direktori di komputer user.\n\n"
+                "ATURAN:\n"
+                "1. read_file untuk membaca isi file (aman, langsung jalan)\n"
+                "2. write_file untuk menulis/membuat file — operasi ini akan meminta "
+                "persetujuan user (diff akan ditampilkan). Jika user menolak, jangan "
+                "memaksa, jelaskan kenapa perlu menulis file tersebut.\n"
+                "3. delete_file untuk menghapus — operasi ini akan meminta persetujuan "
+                "user. Gunakan recursive=true hanya jika benar-benar perlu menghapus "
+                "folder beserta isinya.\n"
+                "4. Selalu baca file dulu sebelum menimpa agar diff yang tampil akurat."
             ),
         ),
         "display": ToolGroup(
@@ -190,6 +199,8 @@ SIMPLE_TOOL_NAMES = [
     "amal_yaumi_fill",
     # Vision / OCR
     "ocr_screen", "ocr_image",
+    # File operations (read is safe; write/delete require user approval)
+    "read_file", "write_file", "delete_file",
 ]
 
 

@@ -189,6 +189,15 @@ class ServiceContext:
                 )
                 logger.info("ToolManager initialized with dynamically fetched tools.")
 
+                # Register locally-implemented tools (file read/write/delete)
+                try:
+                    from .mcpp.file_tools import get_local_tool_definitions
+
+                    lo, lc, raw = get_local_tool_definitions()
+                    self.tool_manager.add_local_tools(lo, lc, raw)
+                except Exception as e:
+                    logger.error(f"Failed to register local file tools: {e}", exc_info=True)
+
             except Exception as e:
                 logger.error(
                     f"Failed during dynamic MCP tool construction: {e}", exc_info=True

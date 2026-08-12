@@ -83,3 +83,24 @@ class ToolManager:
         all_tools = self.get_formatted_tools(mode)
         names = set(tool_names)
         return [t for t in all_tools if t.get("function", {}).get("name") in names]
+
+    def add_local_tools(
+        self,
+        openai_tools: List[Dict[str, Any]],
+        claude_tools: List[Dict[str, Any]],
+        raw_tools: Dict[str, FormattedTool],
+    ) -> None:
+        """Register locally-implemented tools (e.g. file read/write/delete).
+
+        Appends to both the active and the "original" lists so that
+        ``filter_tool_names`` / ``restore_tools`` keep working correctly.
+        """
+        self._original_openai.extend(openai_tools)
+        self._original_claude.extend(claude_tools)
+        self._formatted_tools_openai.extend(openai_tools)
+        self._formatted_tools_claude.extend(claude_tools)
+        self.tools.update(raw_tools)
+        logger.info(
+            f"ToolManager: registered {len(openai_tools)} local tools "
+            f"({', '.join(t.get('function', {}).get('name', '?') for t in openai_tools)})"
+        )

@@ -90,6 +90,24 @@
     },
     "ttsPlaceholder": "TTS settings are managed by the backend server."
   },
+  "approval": {
+    "title": "Action Requires Approval",
+    "write": "WRITE",
+    "delete": "DELETE",
+    "tool": "Tool",
+    "path": "Path",
+    "size": "Size",
+    "approve": "Approve",
+    "deny": "Deny",
+    "confirmDelete": "Confirm Delete",
+    "deleteFileWarning": "This file will be permanently deleted. This action cannot be undone.",
+    "deleteDirWarning": "This directory and everything inside it will be permanently deleted. This action cannot be undone.",
+    "recursiveNote": "Recursive delete",
+    "diffHint": "The AI wants to modify this file. Review the changes below:",
+    "newFileHint": "This is a new file. The AI wants to create it with the content below:",
+    "noDiff": "No diff available.",
+    "contentPreview": "Content preview"
+  },
   "footer": {
     "typeYourMessage": "Type your message...",
     "cameraControl": "Click to start camera",

@@ -129,6 +129,16 @@ export interface MessageEvent {
   schema?: any;
   restart_required?: boolean;
   updates?: Record<string, any>;
+  // Approval requests (dangerous tool operations)
+  approval_id?: string;
+  approved?: boolean;
+  operation?: string;
+  path?: string;
+  diff?: string;
+  exists?: boolean;
+  is_dir?: boolean;
+  size?: number;
+  content_preview?: string;
 }
 
 // Get translation function for error messages

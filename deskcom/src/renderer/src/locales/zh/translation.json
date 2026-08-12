@@ -87,6 +87,24 @@
     },
     "ttsPlaceholder": "TTS 设置由后端服务器管理。"
   },
+  "approval": {
+    "title": "操作需要批准",
+    "write": "写入",
+    "delete": "删除",
+    "tool": "工具",
+    "path": "路径",
+    "size": "大小",
+    "approve": "批准",
+    "deny": "拒绝",
+    "confirmDelete": "确认删除",
+    "deleteFileWarning": "此文件将被永久删除，此操作无法撤销。",
+    "deleteDirWarning": "此目录及其所有内容将被永久删除，此操作无法撤销。",
+    "recursiveNote": "递归删除",
+    "diffHint": "AI 想要修改此文件。请查看以下更改：",
+    "newFileHint": "这是一个新文件。AI 想要用以下内容创建它：",
+    "noDiff": "无可用差异。",
+    "contentPreview": "内容预览"
+  },
   "footer": {
     "typeYourMessage": "输入您的消息...",
     "cameraControl": "点击启动摄像头",

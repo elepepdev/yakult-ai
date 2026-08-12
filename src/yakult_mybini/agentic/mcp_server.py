@@ -733,6 +733,319 @@ def play_youtube(video_url: str, title: str = "") -> str:
         return json.dumps({"success": False, "error": str(e)})
 
 
+@mcp.tool(name="list_playlists", description="List all music playlists. Returns id and name for each playlist.")
+def list_playlists() -> str:
+    try:
+        from yakult_mybini.memory.playlist_manager import playlist_manager
+        items = playlist_manager.list()
+        return json.dumps({"success": True, "playlists": [p.to_dict() for p in items]})
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e)})
+
+
+@mcp.tool(name="create_playlist", description="Create a new music playlist with the given name.")
+def create_playlist(name: str) -> str:
+    try:
+        from yakult_mybini.memory.playlist_manager import playlist_manager
+        playlist = playlist_manager.create(name)
+        if not playlist:
+            return json.dumps({"success": False, "error": "Name is empty or invalid"})
+        return json.dumps({"success": True, "id": playlist.id, "name": playlist.name})
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e)})
+
+
+@mcp.tool(name="delete_playlist", description="Delete a music playlist by its id.")
+def delete_playlist(playlist_id: str) -> str:
+    try:
+        from yakult_mybini.memory.playlist_manager import playlist_manager
+        ok = playlist_manager.delete(playlist_id)
+        return json.dumps({"success": ok})
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e)})
+
+
+@mcp.tool(name="rename_playlist", description="Rename a music playlist by its id.")
+def rename_playlist(playlist_id: str, name: str) -> str:
+    try:
+        from yakult_mybini.memory.playlist_manager import playlist_manager
+        playlist = playlist_manager.rename(playlist_id, name)
+        if not playlist:
+            return json.dumps({"success": False, "error": "Playlist not found or invalid name"})
+        return json.dumps({"success": True, "playlist": playlist.to_dict()})
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e)})
+
+
+@mcp.tool(name="add_to_playlist", description="Add a song to a playlist. Pass the playlist_id, the YouTube video_url, and optionally a title. Returns the added song.")
+def add_to_playlist(playlist_id: str, video_url: str, title: str = "") -> str:
+    try:
+        from yakult_mybini.memory.playlist_manager import playlist_manager, PlaylistSong
+        playlist = playlist_manager.get(playlist_id)
+        if not playlist:
+            return json.dumps({"success": False, "error": "Playlist not found"})
+        if not title:
+            import yt_dlp
+            ydl_opts = {"quiet": True, "no_warnings": True, "extract_flat": True}
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(video_url, download=False)
+                title = info.get("title", "")
+                duration = info.get("duration", 0)
+                thumbnail = info.get("thumbnail", "")
+        else:
+            duration = 0
+            thumbnail = ""
+        song = PlaylistSong(title=title, video_url=video_url, duration=duration, thumbnail=thumbnail)
+        added = playlist_manager.add_song(playlist_id, song)
+        return json.dumps({"success": True, "song": added.to_dict() if added else None})
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e)})
+
+
+@mcp.tool(name="remove_from_playlist", description="Remove a song from a playlist by its song id.")
+def remove_from_playlist(playlist_id: str, song_id: str) -> str:
+    try:
+        from yakult_mybini.memory.playlist_manager import playlist_manager
+        ok = playlist_manager.remove_song(playlist_id, song_id)
+        return json.dumps({"success": ok})
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e)})
+
+
+@mcp.tool(name="download_to_playlist", description="Download a YouTube video's audio locally and add it to a playlist. Pass playlist_id, video_url, and optionally title. Returns the added song with a local file path.")
+def download_to_playlist(playlist_id: str, video_url: str, title: str = "") -> str:
+    try:
+        from yakult_mybini.memory.playlist_manager import playlist_manager, PlaylistSong
+        from yakult_mybini.agentic.downloader import download_audio
+        playlist = playlist_manager.get(playlist_id)
+        if not playlist:
+            return json.dumps({"success": False, "error": "Playlist not found"})
+        if not title:
+            import yt_dlp
+            ydl_opts = {"quiet": True, "no_warnings": True, "extract_flat": True}
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(video_url, download=False)
+                title = info.get("title", "")
+        file_path = download_audio(video_url, title)
+        song = PlaylistSong(title=title, video_url=video_url, file_path=file_path)
+        added = playlist_manager.add_song(playlist_id, song)
+        return json.dumps({"success": True, "song": added.to_dict() if added else None})
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e)})
+
+
+@mcp.tool(name="play_playlist", description="Play a playlist. Pass playlist_id, optionally shuffle=True for random order, and optionally song_title to start from a specific song. Returns the song being played.")
+def play_playlist(playlist_id: str, shuffle: bool = False, song_title: str = "") -> str:
+    try:
+        from yakult_mybini.memory.playlist_manager import playlist_manager
+        from yakult_mybini.mcpp.music_player_manager import music_player_manager
+        from yakult_mybini.agentic.downloader import to_http_url
+        from yakult_mybini.config_manager.utils import read_yaml
+        playlist = playlist_manager.get(playlist_id)
+        if not playlist or not playlist.songs:
+            return json.dumps({"success": False, "error": "Playlist empty or not found"})
+        songs = [s.to_dict() for s in playlist.songs]
+        music_player_manager.set_queue(songs, shuffle=shuffle)
+        if song_title:
+            idx = next(
+                (i for i, s in enumerate(songs) if song_title.lower() in s["title"].lower()),
+                None,
+            )
+            if idx is not None:
+                music_player_manager.seek_queue(idx)
+        first = music_player_manager.next_queued() or songs[0]
+        try:
+            cfg = read_yaml("conf.yaml")
+            sc = cfg.get("system_config", {}) or {}
+            base = f"http://{sc.get('host') or '127.0.0.1'}:{sc.get('port') or 12393}"
+        except Exception:
+            base = "http://127.0.0.1:12393"
+        stream_url = to_http_url(music_player_manager.resolve_stream_url(first) or "", base)
+        return json.dumps({
+            "success": True,
+            "playlist_id": playlist.id,
+            "title": first.get("title", ""),
+            "stream_url": stream_url,
+            "video_url": first.get("video_url", ""),
+            "shuffle": shuffle,
+        })
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e)})
+
+
+@mcp.tool(name="play_mv", description="Play the Music Video (MV) of a YouTube video in a separate window. Pass the video_url. Returns the video stream URL and title.")
+def play_mv(video_url: str, title: str = "") -> str:
+    try:
+        import yt_dlp
+        ydl_opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "format": "best[ext=mp4]/best",
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(video_url, download=False)
+        stream_url = info.get("url", "")
+        if not stream_url:
+            return json.dumps({"success": False, "error": "No video stream found"})
+        return json.dumps({
+            "success": True,
+            "stream_url": stream_url,
+            "title": title or info.get("title", "Unknown"),
+            "video_url": video_url,
+        })
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e)})
+
+
+@mcp.tool(name="weather", description="Get current weather (temperature, feels like, humidity, wind, description) for a city or your current location. Pass an optional city name (e.g. 'Jakarta'); if omitted, geolocates from your IP. Uses free open-meteo, no API key needed.")
+def weather_tool(city: str = "") -> str:
+    try:
+        import httpx
+
+        with httpx.Client(timeout=15.0) as client:
+            if city:
+                geo = client.get(
+                    "https://geocoding-api.open-meteo.com/v1/search",
+                    params={"name": city, "count": 1},
+                ).json()
+                results = geo.get("results") or []
+                if not results:
+                    return json.dumps({"success": False, "error": f"City not found: {city}"})
+                lat, lon, name = results[0]["latitude"], results[0]["longitude"], results[0]["name"]
+            else:
+                loc = client.get("http://ip-api.com/json/").json()
+                lat, lon = loc.get("lat"), loc.get("lon")
+                name = f"{loc.get('city', '')}, {loc.get('country', '')}".strip(" ,") or "your location"
+
+            data = client.get(
+                "https://api.open-meteo.com/v1/forecast",
+                params={
+                    "latitude": lat,
+                    "longitude": lon,
+                    "current": "temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m",
+                },
+            ).json()["current"]
+
+        weather_codes = {
+            0: "Clear", 1: "Mostly clear", 2: "Partly cloudy", 3: "Overcast",
+            45: "Fog", 48: "Depositing rime fog",
+            51: "Light drizzle", 53: "Drizzle", 55: "Dense drizzle",
+            61: "Slight rain", 63: "Rain", 65: "Heavy rain",
+            71: "Slight snow", 73: "Snow", 75: "Heavy snow",
+            80: "Slight showers", 81: "Showers", 82: "Violent showers",
+            95: "Thunderstorm", 96: "Thunderstorm with hail", 99: "Thunderstorm with heavy hail",
+        }
+        return json.dumps({
+            "success": True,
+            "location": name,
+            "temperature_c": data.get("temperature_2m"),
+            "feels_like_c": data.get("apparent_temperature"),
+            "humidity_pct": data.get("relative_humidity_2m"),
+            "wind_speed_kmh": round(data.get("wind_speed_10m", 0), 1),
+            "condition": weather_codes.get(data.get("weather_code"), "Unknown"),
+        })
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e)})
+
+
+@mcp.tool(name="system_status", description="Report system health: CPU usage %, RAM used/total, disk used/total, and battery level/plugged status if present. Use when the user asks about battery, CPU, RAM, disk, or system performance.")
+def system_status() -> str:
+    try:
+        import psutil
+
+        cpu = psutil.cpu_percent(interval=0.5)
+        mem = psutil.virtual_memory()
+        disk = psutil.disk_usage("/")
+
+        battery_info = {}
+        try:
+            battery = psutil.sensors_battery()
+            if battery:
+                battery_info = {
+                    "percent": battery.percent,
+                    "plugged_in": battery.power_plugged,
+                }
+        except Exception:
+            battery_info = {}
+
+        return json.dumps({
+            "success": True,
+            "cpu_percent": cpu,
+            "ram_used_gb": round(mem.used / (1024 ** 3), 2),
+            "ram_total_gb": round(mem.total / (1024 ** 3), 2),
+            "ram_percent": mem.percent,
+            "disk_used_gb": round(disk.used / (1024 ** 3), 2),
+            "disk_total_gb": round(disk.total / (1024 ** 3), 2),
+            "disk_percent": disk.percent,
+            "battery": battery_info,
+        })
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e)})
+
+
+@mcp.tool(name="take_screenshot", description="Capture the full screen (or an optional region [left, top, width, height]) and save it as a PNG file. Returns the absolute path to the saved image. Use this when the user asks you to take/save a screenshot.")
+def take_screenshot(region: list[int] = None, path: str = "") -> str:
+    try:
+        import mss
+        from PIL import Image
+
+        save_dir = os.environ.get("SCREENSHOT_DIR", os.path.join(os.getcwd(), "screenshots"))
+        os.makedirs(save_dir, exist_ok=True)
+        if not path:
+            path = os.path.join(save_dir, f"screenshot_{int(time.time())}.png")
+
+        with mss.mss() as sct:
+            if region:
+                left, top, width, height = region
+                box = {"left": left, "top": top, "width": width, "height": height}
+            else:
+                mon = sct.monitors[1]
+                box = {"left": mon["left"], "top": mon["top"],
+                       "width": mon["width"], "height": mon["height"]}
+            shot = sct.grab(box)
+
+        img = Image.frombytes("RGB", shot.size, shot.bgra, "raw", "BGRX")
+        img.save(path)
+        return json.dumps({"success": True, "path": os.path.abspath(path)})
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e)})
+
+
+@mcp.tool(name="wikipedia_search", description="Fetch a concise summary of a topic from Wikipedia. Returns the page title, summary text, and a link. Use for factual questions about known topics, history, science, people, places.")
+def wikipedia_search(query: str, sentences: int = 3) -> str:
+    try:
+        import httpx
+
+        with httpx.Client(timeout=15.0, headers={"User-Agent": "yakult-mybini/1.0"}) as client:
+            from urllib.parse import quote
+            resp = client.get("https://en.wikipedia.org/api/rest_v1/page/summary/" + quote(query.replace(" ", "_")))
+            if resp.status_code == 404:
+                search = client.get(
+                    "https://en.wikipedia.org/w/api.php",
+                    params={"action": "query", "list": "search", "srsearch": query, "format": "json", "srlimit": 1},
+                ).json()
+                hits = search.get("query", {}).get("search", [])
+                if not hits:
+                    return json.dumps({"success": False, "error": f"No Wikipedia article found for: {query}"})
+                return json.dumps({
+                    "success": True,
+                    "suggested_title": hits[0]["title"],
+                    "snippet": hits[0].get("snippet", "").replace("<span class=\"searchmatch\">", "").replace("</span>", ""),
+                    "url": "https://en.wikipedia.org/wiki/" + hits[0]["title"].replace(" ", "_"),
+                })
+            data = resp.json()
+            extract = data.get("extract", "")
+            summary = " ".join(extract.split(". ")[:sentences]) + ("." if extract and not extract.endswith(".") else "")
+            return json.dumps({
+                "success": True,
+                "title": data.get("title", query),
+                "summary": summary,
+                "url": data.get("content_urls", {}).get("desktop", {}).get("page", ""),
+            })
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e)})
+
+
 def main():
     mcp.run()
 

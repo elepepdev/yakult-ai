@@ -1,7 +1,7 @@
 import { FaTools } from 'react-icons/fa';
 import {
-  LuBell, LuSend, LuMic, LuMicOff, LuHand, LuX, LuSettings, LuMessageSquare,
-  LuCamera, LuMonitor, LuGlobe, LuBrain,
+  LuBell, LuSend, LuMic, LuMicOff, LuHand, LuSettings, LuMessageSquare,
+  LuCamera, LuMonitor, LuGlobe, LuBrain, LuListMusic,
 } from 'react-icons/lu';
 import {
   Box,
@@ -18,13 +18,17 @@ import { useState, useCallback, useMemo } from 'react';
 import { useInputSubtitle } from '@/hooks/electron/use-input-subtitle';
 import { useChatHistory } from '@/context/chat-history-context';
 import { FormattedText } from '@/components/ui/formatted-text';
+import { useTypewriter } from '@/hooks/utils/use-typewriter';
 import { useCamera } from '@/context/camera-context';
 import { useScreenCaptureContext } from '@/context/screen-capture-context';
 import { useBrowser } from '@/context/browser-context';
+import { useSubtitle } from '@/context/subtitle-context';
+import { FileAttachButton, FileAttachChips } from '@/components/ui/file-attach';
 import SettingsFloatingWindow from '@/components/floating/settings-floating-window';
 import ChatHistoryFloatingWindow from '@/components/floating/chat-history-floating-window';
 import MemoryFloatingWindow from '@/components/floating/memory-floating-window';
 import TodoFloatingWindow from '@/components/floating/todo-floating-window';
+import PlaylistFloatingWindow from '@/components/floating/playlist-floating-window';
 
 export function WebInputSubtitle() {
   const {
@@ -43,6 +47,7 @@ export function WebInputSubtitle() {
     handleSelect,
     inputRef,
     mention,
+    attach,
   } = useInputSubtitle();
 
   const { messages } = useChatHistory();
@@ -60,6 +65,7 @@ export function WebInputSubtitle() {
   } = useScreenCaptureContext();
 
   const { browserViewData } = useBrowser();
+  const { dismissSubconscious } = useSubtitle();
 
   const toggleCamera = useCallback(() => {
     if (cameraOn) {
@@ -87,6 +93,7 @@ export function WebInputSubtitle() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [todoOpen, setTodoOpen] = useState(false);
+  const [playlistOpen, setPlaylistOpen] = useState(false);
 
   const runningToolCalls = useMemo(
     () => messages.filter((msg) => msg.type === 'tool_call_status' && msg.status === 'running'),
@@ -94,6 +101,7 @@ export function WebInputSubtitle() {
   );
   const hasRunningTools = runningToolCalls.length > 0;
   const isProcessing = aiState === 'thinking-speaking' || aiState === 'loading';
+  const typedLastAIMessage = useTypewriter(lastAIMessage ?? '');
 
   const iconButtonStyle = {
     size: 'xs' as const,
@@ -112,11 +120,11 @@ export function WebInputSubtitle() {
         zIndex={1000}
         w="420px"
         maxW="calc(100vw - 32px)"
-        rounded="2xl"
+        borderRadius="var(--sk-radius-card)"
         overflow="hidden"
-        border="1px solid"
-        borderColor="whiteAlpha.200"
-        bg="rgba(20, 20, 40, 0.65)"
+        border="1.5px solid"
+        borderColor="var(--sk-outline)"
+        bg="var(--sk-paper-glass)"
         backdropFilter="blur(18px)"
         WebkitBackdropFilter="blur(18px)"
         boxShadow="0 8px 40px rgba(0,0,0,0.45)"
@@ -126,9 +134,9 @@ export function WebInputSubtitle() {
           px={3}
           py={1.5}
           gap={1}
-          borderBottom="1px solid"
-          borderColor="whiteAlpha.100"
-          bg="rgba(255,255,255,0.03)"
+          borderBottom="1.5px solid"
+          borderColor="var(--sk-outline)"
+          bg="var(--sk-paper-deep)"
         >
           <IconButton
             aria-label="Settings"
@@ -162,6 +170,14 @@ export function WebInputSubtitle() {
           >
             <LuBell size={14} />
           </IconButton>
+          <IconButton
+            aria-label="Playlists"
+            {...iconButtonStyle}
+            color={playlistOpen ? "blue.300" : "whiteAlpha.600"}
+            onClick={() => setPlaylistOpen(!playlistOpen)}
+          >
+            <LuListMusic size={14} />
+          </IconButton>
         </Flex>
 
         {hasAIMessages && (
@@ -171,6 +187,7 @@ export function WebInputSubtitle() {
             gap={1}
             alignItems="stretch"
             justify="flex-end"
+            bg="var(--sk-paper-deep)"
           >
             {lastAIMessage && (
               <Text
@@ -187,9 +204,9 @@ export function WebInputSubtitle() {
         <Box
           px="3"
           py="2"
-          borderTop="1px solid"
-          borderColor="whiteAlpha.100"
-          bg="rgba(255,255,255,0.02)"
+          borderTop="1.5px solid"
+          borderColor="var(--sk-outline)"
+          bg="var(--sk-paper-deep)"
         >
           <Flex align="center" justify="space-between" color="whiteAlpha.700">
             <Flex align="center" gap="2">
@@ -258,7 +275,18 @@ export function WebInputSubtitle() {
           borderColor="whiteAlpha.100"
           bg="rgba(255,255,255,0.02)"
         >
+          <FileAttachChips files={attach.files} onRemove={attach.removeFile} />
           <Stack direction="row" gap="2" p="2.5">
+            <input
+              ref={attach.fileInputRef}
+              type="file"
+              multiple
+              hidden
+              onChange={(e) => {
+                attach.onFilesSelected(e.target.files);
+                e.target.value = '';
+              }}
+            />
             <Box position="relative" flex="1">
               <Input
                 ref={inputRef}
@@ -266,6 +294,7 @@ export function WebInputSubtitle() {
                 onChange={handleInputChange}
                 onKeyDown={handleKeyPress}
                 onSelect={handleSelect}
+                onFocus={dismissSubconscious}
                 onCompositionStart={handleCompositionStart}
                 onCompositionEnd={handleCompositionEnd}
                 placeholder="Type your message... (use @ to mention files)"
@@ -325,6 +354,7 @@ export function WebInputSubtitle() {
                 </Box>
               )}
             </Box>
+            <FileAttachButton onPick={attach.openPicker} uploading={attach.uploading} />
             <Button
               onClick={handleSend}
               p="1.5"
@@ -356,6 +386,10 @@ export function WebInputSubtitle() {
       <TodoFloatingWindow
         open={todoOpen}
         onClose={() => setTodoOpen(false)}
+      />
+      <PlaylistFloatingWindow
+        open={playlistOpen}
+        onClose={() => setPlaylistOpen(false)}
       />
     </>
   );

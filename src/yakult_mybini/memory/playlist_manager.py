@@ -200,6 +200,25 @@ class PlaylistManager:
                 return True
         return False
 
+    def reorder_song(
+        self, playlist_id: str, song_id: str, new_index: int
+    ) -> bool:
+        """Move a song within a playlist to a new index (0-based)."""
+        items = self.load()
+        for p in items:
+            if p.id == playlist_id:
+                current = next(
+                    (i for i, s in enumerate(p.songs) if s.id == song_id), None
+                )
+                if current is None:
+                    return False
+                song = p.songs.pop(current)
+                new_index = max(0, min(new_index, len(p.songs)))
+                p.songs.insert(new_index, song)
+                self.save(items)
+                return True
+        return False
+
     def to_prompt_string(self) -> str:
         items = self.load()
         if not items:

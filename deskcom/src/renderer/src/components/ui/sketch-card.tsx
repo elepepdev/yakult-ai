@@ -1,5 +1,6 @@
 import { Box } from '@chakra-ui/react';
 import type { SystemStyleObject } from '@chakra-ui/react';
+import { WashiTape } from './washi-tape';
 
 interface SketchCardProps {
   children: React.ReactNode;
@@ -39,8 +40,6 @@ export function SketchCard({ children, label, tapeColor, css, onClick, cursor }:
     </Box>
   );
 }
-
-import { WashiTape } from './washi-tape';
 
 function WashiTapeLabel({ label, color }: { label: string; color?: string }) {
   return <WashiTape label={label} color={color} />;

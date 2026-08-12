@@ -2,7 +2,7 @@
 
 import asyncio
 
-from yakult_mybini.utils.sentence_divider import SentenceDivider
+from yakult_mybini.utils.sentence_divider import SentenceDivider, is_complete_sentence
 
 
 async def _stream(chunks):
@@ -13,7 +13,11 @@ async def _stream(chunks):
 async def _collect(text: str) -> list:
     divider = SentenceDivider(faster_first_response=True, segment_method="pysbd")
     chunks = [text[i : i + 3] for i in range(0, len(text), 3)]
-    return [s.text for s in divider.process_stream(_stream(chunks)) if hasattr(s, "text")]
+    out = []
+    async for s in divider.process_stream(_stream(chunks)):
+        if hasattr(s, "text"):
+            out.append(s.text)
+    return out
 
 
 def test_emotion_tag_not_split():
@@ -27,11 +31,10 @@ def test_emotion_tag_not_split():
 
 def test_partial_tag_not_flushed():
     divider = SentenceDivider()
-    # The ".", "!" inside [._.] must never be treated as sentence boundaries.
-    for chunk in ["[", "._.", "] Ehm gitu aja", "?"]:
+    # The "." inside an unclosed [._ must not be treated as a sentence boundary.
+    for chunk in ["[", "._", ".", "] Ehm gitu aja", "?"]:
         divider._buffer += chunk
-        assert not (
-            any(p in divider._buffer for p in "?.!。")
-            and divider.is_complete_sentence(divider._buffer)
-            and "]" not in divider._buffer.split("]")[0]
-        ) or "?" in divider._buffer
+        complete = is_complete_sentence(divider._buffer)
+        if "]" not in divider._buffer:
+            assert not complete, f"partial tag flushed early: {divider._buffer!r}"
+    assert is_complete_sentence(divider._buffer)

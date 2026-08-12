@@ -5,13 +5,14 @@ import {
   Spinner,
   HStack,
   VStack,
-  Checkbox,
 } from '@chakra-ui/react';
 import { useMemo, useEffect } from 'react';
 import { LuX, LuBell } from 'react-icons/lu';
 import { FiTrash2 } from 'react-icons/fi';
 import { useDraggable } from '@/hooks/electron/use-draggable';
 import { useTodoFloating, TodoItem } from '@/hooks/floating/use-todo-floating';
+import { WashiTape } from '@/components/ui/washi-tape';
+import { SketchCheckbox } from '@/components/ui/sketch-checkbox';
 
 function formatDatetime(dt: string | null): string {
   if (!dt) return '';

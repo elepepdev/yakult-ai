@@ -5,9 +5,30 @@ of every field (type, current value, description, options), using the existing
 ``I18nMixin.DESCRIPTIONS`` metadata. Secrets (api keys, passwords) are masked.
 """
 
-from typing import Any, Dict, List, Optional, get_args, get_origin
+from typing import Any, Dict, List, Literal, Optional, Union, get_args, get_origin
+from types import UnionType
 
 from pydantic import BaseModel
+from pydantic_core import PydanticUndefined
+
+
+def _is_model(inner: Any) -> bool:
+    """True for pydantic BaseModel subclasses and pydantic dataclasses."""
+    if isinstance(inner, type) and issubclass(inner, BaseModel):
+        return True
+    try:
+        from pydantic.dataclasses import is_pydantic_dataclass
+
+        return is_pydantic_dataclass(inner)
+    except Exception:
+        return False
+
+
+def _model_fields(model: Any) -> dict:
+    """Get pydantic field metadata for a BaseModel or pydantic dataclass."""
+    return getattr(model, "model_fields", None) or getattr(
+        model, "__pydantic_fields__", {}
+    )
 
 from .main import Config
 
@@ -45,17 +66,17 @@ def _literal_options(annotation: Any) -> Optional[List[str]]:
 
 def _is_optional(annotation: Any) -> bool:
     origin = get_origin(annotation)
-    return origin in (Optional, Union) and type(None) in get_args(annotation)
+    return origin in (Optional, Union, UnionType) and type(None) in get_args(annotation)
 
 
 def _unwrap(annotation: Any) -> Any:
     """Strip Optional/Annotated wrappers to get the inner type."""
-    from typing import Annotated, Optional, Union
+    from typing import Annotated
 
     origin = get_origin(annotation)
     if origin is Annotated:
         return _unwrap(get_args(annotation)[0])
-    if origin in (Optional, Union):
+    if origin in (Optional, Union, UnionType):
         args = [a for a in get_args(annotation) if a is not type(None)]
         if len(args) == 1:
             return _unwrap(args[0])
@@ -85,7 +106,7 @@ def _to_schema(
 ) -> Dict[str, Any]:
     """Serialize one pydantic model into a schema node."""
     children = []
-    model_fields = getattr(model, "model_fields", {})
+    model_fields = _model_fields(model)
     descriptions = getattr(model, "DESCRIPTIONS", {})
 
     for field_name, field in model_fields.items():
@@ -97,6 +118,8 @@ def _to_schema(
         desc = descriptions.get(field_name)
         description = desc.get_text(lang) if desc else None
         notes = desc.get_notes(lang) if desc else None
+        if not description:
+            description = field_name.replace("_", " ").title()
 
         node: Dict[str, Any] = {
             "name": field_name,
@@ -106,16 +129,16 @@ def _to_schema(
             "secret": _is_secret(field_name),
             "default": None,
         }
-        if field.default is not None:
+        if field.default not in (None, PydanticUndefined):
             node["default"] = field.default
 
         # nested pydantic model -> recurse
-        if isinstance(inner, type) and issubclass(inner, BaseModel):
+        if _is_model(inner):
             node["type"] = "object"
             if depth < max_depth:
                 node["children"] = _to_schema(
                     inner, value, field_path, lang, max_depth, depth + 1
-                )
+                )["children"]
             else:
                 node["children"] = []
             children.append(node)

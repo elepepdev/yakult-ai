@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Box, Text, Field, Switch, Select, Input, Textarea, Collapsible, Button, Tag, createListCollection,
 } from '@chakra-ui/react';
@@ -184,13 +184,30 @@ function ArrayEditor({ value, onChange }: { value: any[]; onChange: (v: any[]) =
   );
 }
 
+const WIDE_SECTION_THRESHOLD = 6;
+
 function ObjectSection({ node, values, onChange }: { node: any; values: Record<string, any>; onChange: (path: string, v: any) => void }) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<string>('');
 
   if (!node.children || node.children.length === 0) {
     return null;
   }
+
+  const isWide = node.children.length > WIDE_SECTION_THRESHOLD;
+  const sectionOptions = useMemo(() => createListCollection({
+    items: [
+      { label: t('settings.showAll'), value: '' },
+      ...node.children
+        .filter((c: any) => c.type === 'object')
+        .map((c: any) => ({ label: c.description || c.name, value: c.name })),
+    ],
+  }), [node, t]);
+
+  const visibleChildren = isWide && selected
+    ? node.children.filter((c: any) => c.name === selected)
+    : node.children;
 
   return (
     <Collapsible.Root open={open} onOpenChange={(e) => setOpen(!!e.open)}>
@@ -212,9 +229,28 @@ function ObjectSection({ node, values, onChange }: { node: any; values: Record<s
             </Text>
           </Box>
         </Collapsible.Trigger>
-        <Collapsible.Content>
+        <Collapsible.Content lazyMount unmountOnExit>
+          {isWide && (
+            <Box px={3} pt={3}>
+              <Select.Root
+                collection={sectionOptions}
+                value={[selected]}
+                onValueChange={(e) => setSelected(e.value[0] ?? '')}
+                size="sm"
+              >
+                <Select.Trigger css={inputStyles}>
+                  <Select.ValueText placeholder={t('settings.selectSection')} />
+                </Select.Trigger>
+                <Select.Content>
+                  {sectionOptions.items.map((opt) => (
+                    <Select.Item item={opt} key={opt.value}>{opt.label}</Select.Item>
+                  ))}
+                </Select.Content>
+              </Select.Root>
+            </Box>
+          )}
           <Box px={3} py={3} spaceY={4}>
-            {node.children.map((child: any) => (
+            {visibleChildren.map((child: any) => (
               <SchemaField key={child.path} node={child} values={values} onChange={onChange} />
             ))}
           </Box>
@@ -234,9 +270,11 @@ function SchemaField({ node, values, onChange }: { node: any; values: Record<str
 
 interface SchemaFormProps {
   rootPath: string;
+  /** Restrict which direct children of the root node are rendered. */
+  only?: string[];
 }
 
-export default function SchemaForm({ rootPath }: SchemaFormProps) {
+export default function SchemaForm({ rootPath, only }: SchemaFormProps) {
   const { t } = useTranslation();
   const { schema, refreshSchema, onSchemaRefreshed } = useConfigSchema();
   const { sendMessage } = useWebSocket();
@@ -262,6 +300,7 @@ export default function SchemaForm({ rootPath }: SchemaFormProps) {
   // Collect leaf values under rootNode
   const collectValues = (node: any, out: Record<string, any> = {}): Record<string, any> => {
     for (const child of node.children || []) {
+      if (only && !only.includes(child.name)) continue;
       if (child.type === 'object') {
         collectValues(child, out);
       } else if (child.value !== undefined) {
@@ -327,9 +366,11 @@ export default function SchemaForm({ rootPath }: SchemaFormProps) {
   return (
     <Box spaceY={4}>
       <Box spaceY={4}>
-        {rootNode.children.map((child: any) => (
-          <SchemaField key={child.path} node={child} values={values} onChange={handleChange} />
-        ))}
+        {rootNode.children
+          .filter((child: any) => !only || only.includes(child.name))
+          .map((child: any) => (
+            <SchemaField key={child.path} node={child} values={values} onChange={handleChange} />
+          ))}
       </Box>
 
       <Box display="flex" gap={2} pt={2}>
@@ -342,13 +383,20 @@ export default function SchemaForm({ rootPath }: SchemaFormProps) {
         >
           {t('settings.save')}
         </Button>
-        <Button size="sm" variant="outline" onClick={reset} disabled={!hasDirty}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={reset}
+          disabled={!hasDirty}
+          bg="var(--sk-paper-raised)"
+          color="var(--sk-ink-soft)"
+          border="1px solid"
+          borderColor="var(--sk-outline)"
+          _hover={{ bg: 'var(--sk-outline)', color: 'var(--sk-ink)' }}
+        >
           {t('settings.reset')}
         </Button>
       </Box>
     </Box>
   );
 }
-
-// eslint-disable-next-line react-hooks/rules-of-hooks
-import { useMemo } from 'react';

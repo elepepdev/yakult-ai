@@ -1,4 +1,11 @@
 import { createRoot } from 'react-dom/client';
+import '@fontsource/caveat/400.css';
+import '@fontsource/caveat/600.css';
+import '@fontsource/nunito-sans/400.css';
+import '@fontsource/nunito-sans/600.css';
+import '@fontsource/nunito-sans/700.css';
+import '@fontsource/jetbrains-mono/400.css';
+import '@fontsource/jetbrains-mono/700.css';
 import './index.css';
 import App from './App';
 import { LAppAdapter } from '../WebSDK/src/lappadapter';

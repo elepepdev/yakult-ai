@@ -5,6 +5,7 @@ import { useInterrupt } from '@/components/canvas/live2d';
 import { useChatHistory } from '@/context/chat-history-context';
 import { useVAD } from '@/context/vad-context';
 import { useMediaCapture } from '@/hooks/utils/use-media-capture';
+import { useFileAttach } from '@/hooks/utils/use-file-attach';
 import { useMention } from './use-mention';
 import { getPlatform } from '@/platforms';
 
@@ -49,6 +50,7 @@ export function useTextInput() {
   const { appendHumanMessage } = useChatHistory();
   const { stopMic, autoStopMic } = useVAD();
   const { captureAllMedia } = useMediaCapture();
+  const attach = useFileAttach();
 
   const mention = useMention(inputText, setInputText, inputRef);
 
@@ -61,7 +63,7 @@ export function useTextInput() {
   };
 
   const handleSend = async () => {
-    if (!inputText.trim() || !wsContext) return;
+    if ((!inputText.trim() && attach.files.length === 0) || !wsContext) return;
     if (aiState === 'thinking-speaking') {
       interrupt();
     }
@@ -70,15 +72,25 @@ export function useTextInput() {
 
     const resolvedText = await resolveFileContexts(inputText.trim());
 
+    const filePayload = attach.files.map((f) => ({
+      name: f.name,
+      mime_type: f.mime_type,
+      kind: f.kind,
+      data: f.data,
+      size: f.size,
+    }));
+
     appendHumanMessage(resolvedText);
     wsContext.sendMessage({
       type: 'text-input',
       text: resolvedText,
       images,
+      files: filePayload.length > 0 ? filePayload : undefined,
     });
 
     if (autoStopMic) stopMic();
     setInputText('');
+    attach.clearFiles();
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -105,5 +117,6 @@ export function useTextInput() {
     handleSelect,
     inputRef,
     mention,
+    attach,
   };
 }

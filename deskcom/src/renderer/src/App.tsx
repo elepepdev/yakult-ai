@@ -13,6 +13,7 @@ import { CharacterConfigProvider } from "./context/character-config-context";
 import { Toaster } from "./components/ui/toaster";
 import { VADProvider } from "./context/vad-context";
 import { ModelRenderer } from "./components/canvas/ModelRenderer";
+import ThoughtBubble from "./components/canvas/thought-bubble";
 import { InputSubtitle } from "./components/electron/input-subtitle";
 import { WebInputSubtitle } from "./components/web/web-input-subtitle";
 import { ProactiveSpeakProvider } from "./context/proactive-speak-context";
@@ -21,18 +22,26 @@ import { ScreenCaptureProvider } from "./context/screen-capture-context";
 import "@chatscope/chat-ui-kit-styles/dist/default/styles.min.css";
 
 import { ModeProvider } from "./context/mode-context";
+import { ThemeProvider } from "./context/theme-context";
 import { GroupProvider } from "./context/group-context";
 import { BrowserProvider } from "./context/browser-context";
 import { AgentProviderConfigProvider } from "./context/agent-provider-config-context";
+import { ConfigSchemaProvider } from "./context/config-schema-context";
 import { MusicPlayerProvider } from "./context/music-player-context";
 import MusicPlayerWindow from "./components/floating/music-player-window";
+import MVWindow from "./components/floating/mv-window";
 import { ErrorBoundary } from "./components/error-boundary";
 import { useIpcHandlers } from "./hooks/utils/use-ipc-handlers";
 import { useMode } from "./context/mode-context";
+import { useWebSocket } from "./context/websocket-context";
+
+import { StageLayoutProvider } from "./context/stage-layout-context";
+import { StageQuickBar } from "./components/floating/stage-quick-bar";
 
 function AppContent(): JSX.Element {
   useIpcHandlers();
   const { isElectron } = useMode();
+  const { sendMessage } = useWebSocket();
 
   useEffect(() => {
     const handleResize = () => {
@@ -43,6 +52,26 @@ function AppContent(): JSX.Element {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  useEffect(() => {
+    // Throttled user-activity signal so idle-life doesn't treat real input as idle
+    let lastSent = 0;
+    const THROTTLE_MS = 10_000;
+    const notify = () => {
+      const now = Date.now();
+      if (now - lastSent < THROTTLE_MS) return;
+      lastSent = now;
+      sendMessage({ type: "user-active" });
+    };
+    window.addEventListener("pointermove", notify);
+    window.addEventListener("pointerdown", notify);
+    window.addEventListener("keydown", notify);
+    return () => {
+      window.removeEventListener("pointermove", notify);
+      window.removeEventListener("pointerdown", notify);
+      window.removeEventListener("keydown", notify);
+    };
+  }, [sendMessage]);
 
   return (
     <Box
@@ -64,8 +93,11 @@ function AppContent(): JSX.Element {
       >
         <ModelRenderer />
       </Box>
+      <ThoughtBubble />
+      <StageQuickBar />
       {isElectron ? <InputSubtitle /> : <WebInputSubtitle />}
       <MusicPlayerWindow />
+      <MVWindow />
     </Box>
   );
 }
@@ -74,7 +106,9 @@ function App(): JSX.Element {
   return (
     <ChakraProvider value={defaultSystem}>
       <ModeProvider>
-        <AppWithGlobalStyles />
+        <ThemeProvider>
+          <AppWithGlobalStyles />
+        </ThemeProvider>
       </ModeProvider>
     </ChakraProvider>
   );
@@ -96,12 +130,16 @@ function AppWithGlobalStyles(): JSX.Element {
                           <GroupProvider>
                             <BrowserProvider>
                               <AgentProviderConfigProvider>
+                                <ConfigSchemaProvider>
                                 <MusicPlayerProvider>
-                                  <WebSocketHandler>
-                                    <Toaster />
-                                    <AppContent />
-                                  </WebSocketHandler>
+                                  <StageLayoutProvider>
+                                    <WebSocketHandler>
+                                      <Toaster />
+                                      <AppContent />
+                                    </WebSocketHandler>
+                                  </StageLayoutProvider>
                                 </MusicPlayerProvider>
+                                </ConfigSchemaProvider>
                               </AgentProviderConfigProvider>
                             </BrowserProvider>
                           </GroupProvider>

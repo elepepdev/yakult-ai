@@ -21,6 +21,33 @@ from .stateless_llm_interface import StatelessLLMInterface
 from ...mcpp.types import ToolCallObject
 
 
+def _strip_image_parts(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Remove image_url parts from messages for text-only models.
+
+    Image parts are replaced with a text placeholder so the model still knows
+    an image was attached without crashing on unsupported content types.
+    """
+    stripped = []
+    for msg in messages:
+        content = msg.get("content")
+        if isinstance(content, list):
+            new_content = []
+            for part in content:
+                if isinstance(part, dict) and part.get("type") == "image_url":
+                    new_content.append(
+                        {"type": "text", "text": "[Image content omitted — model does not support images]"}
+                    )
+                else:
+                    new_content.append(part)
+            if new_content:
+                stripped.append({**msg, "content": new_content})
+            else:
+                stripped.append({**msg, "content": ""})
+        else:
+            stripped.append(msg)
+    return stripped
+
+
 class AsyncLLM(StatelessLLMInterface):
     def __init__(
         self,
@@ -33,6 +60,7 @@ class AsyncLLM(StatelessLLMInterface):
         max_tokens: int | None = None,
         top_p: float | None = None,
         presence_penalty: float | None = None,
+        supports_images: bool = True,
     ):
         """
         Initializes an instance of the `AsyncLLM` class.
@@ -47,6 +75,8 @@ class AsyncLLM(StatelessLLMInterface):
         - max_tokens (int, optional): Maximum tokens in the response. None = provider default.
         - top_p (float, optional): Nucleus sampling threshold. None = provider default.
         - presence_penalty (float, optional): Penalize new tokens based on presence. None = provider default.
+        - supports_images (bool): Whether the model accepts image inputs. If False, image_url parts
+          are stripped from outgoing messages (replaced with a text note).
         """
         self.base_url = base_url
         self.model = model
@@ -54,11 +84,13 @@ class AsyncLLM(StatelessLLMInterface):
         self.max_tokens = max_tokens
         self.top_p = top_p
         self.presence_penalty = presence_penalty
+        self.supports_images = supports_images
         self.client = AsyncOpenAI(
             base_url=base_url,
             organization=organization_id,
             project=project_id,
             api_key=llm_api_key,
+            default_headers={"User-Agent": "curl/8.7.1"},
         )
         self.support_tools = True
 
@@ -102,6 +134,8 @@ class AsyncLLM(StatelessLLMInterface):
                     {"role": "system", "content": system},
                     *messages,
                 ]
+            if not self.supports_images:
+                messages_with_system = _strip_image_parts(messages_with_system)
             logger.debug(f"Messages: {messages_with_system}")
 
             available_tools = tools if self.support_tools else NOT_GIVEN
@@ -255,3 +289,4 @@ class AsyncLLM(StatelessLLMInterface):
                 logger.debug("Chat completion finished.")
                 await stream.close()
                 logger.debug("Stream closed.")
+

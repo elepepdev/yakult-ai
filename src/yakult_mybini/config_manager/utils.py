@@ -247,14 +247,14 @@ def scan_config_alts_directory(config_alts_dir: str) -> list[dict]:
 
     # Add default config first
     default_config = read_yaml("conf.yaml")
+    default_char: dict = (default_config or {}).get("character_config", {}) or {}
+    default_name = default_char.get("conf_name") or "conf.yaml"
+    default_type = default_char.get("model_type") or "live2d"
     config_files.append(
         {
             "filename": "conf.yaml",
-            "name": default_config.get("character_config", {}).get(
-                "conf_name", "conf.yaml"
-            )
-            if default_config
-            else "conf.yaml",
+            "name": default_name,
+            "model_type": default_type,
         }
     )
 
@@ -263,14 +263,19 @@ def scan_config_alts_directory(config_alts_dir: str) -> list[dict]:
         for file in files:
             if file.endswith(".yaml"):
                 config: dict = read_yaml(os.path.join(root, file))
+                char: dict = (config or {}).get("character_config", {}) or {}
+                char_name = char.get("conf_name") or file
+                char_type = char.get("model_type") or "live2d"
+                if (char_name, char_type) == (default_name, default_type):
+                    logger.debug(
+                        f"Skipping duplicate of active config in character list: {file}"
+                    )
+                    continue
                 config_files.append(
                     {
                         "filename": file,
-                        "name": config.get("character_config", {}).get(
-                            "conf_name", file
-                        )
-                        if config
-                        else file,
+                        "name": char_name,
+                        "model_type": char_type,
                     }
                 )
     logger.debug(f"Found config files: {config_files}")

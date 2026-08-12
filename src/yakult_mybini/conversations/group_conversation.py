@@ -34,6 +34,7 @@ async def process_group_conversation(
     initiator_client_uid: str,
     user_input: Union[str, np.ndarray],
     images: Optional[List[Dict[str, Any]]] = None,
+    files: Optional[List[Dict[str, Any]]] = None,
     session_emoji: str = np.random.choice(EMOJI_LIST),
     metadata: Optional[Dict[str, Any]] = None,
 ) -> None:
@@ -47,6 +48,7 @@ async def process_group_conversation(
         initiator_client_uid: UID of conversation initiator
         user_input: Text or audio input from user
         images: Optional list of image data
+        files: Optional list of attached file data
         session_emoji: Emoji identifier for the conversation
         metadata: Optional metadata for special processing flags
     """
@@ -125,6 +127,7 @@ async def process_group_conversation(
                     broadcast_func=broadcast_func,
                     group_members=group_members,
                     images=images,
+                    files=files,
                     tts_manager=tts_managers[current_member_uid],
                     metadata=current_metadata,
                 )
@@ -232,6 +235,7 @@ async def handle_group_member_turn(
     group_members: List[str],
     images: Optional[List[Dict[str, Any]]],
     tts_manager: TTSTaskManager,
+    files: Optional[List[Dict[str, Any]]] = None,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> None:
     """Handle a single group member's conversation turn"""
@@ -249,6 +253,7 @@ async def handle_group_member_turn(
     batch_input = create_batch_input(
         input_text=new_context,
         images=images,
+        files=files,
         from_name="Human",
         metadata=metadata,
     )

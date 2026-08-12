@@ -13,6 +13,7 @@ class ToolGroup:
 ROUTER_SYSTEM = """Kamu adalah router. Klasifikasikan pesan user ke SATU kategori:
 
 - desktop: buka/tutup/fokus aplikasi, klik, ketik, tekan keyboard
+- browser: isi formulir web, buka situs, isi amal yaumi
 - package: install/hapus/update software, cari package
 - memory: simpan/ingat fakta, todo list, catatan
 - youtube: cari/putar lagu, video, musik
@@ -21,7 +22,7 @@ ROUTER_SYSTEM = """Kamu adalah router. Klasifikasikan pesan user ke SATU kategor
 - vision: baca teks dari layar atau file gambar (OCR)
 - none: sapaan, obrolan biasa, pertanyaan umum, hitungan
 
-Balas HANYA 1 kata: desktop/package/memory/youtube/file/display/vision/none"""
+Balas HANYA 1 kata: desktop/browser/package/memory/youtube/file/display/vision/none"""
 
 
 def get_default_groups() -> Dict[str, ToolGroup]:
@@ -70,6 +71,34 @@ def get_default_groups() -> Dict[str, ToolGroup]:
                 "4. Jalankan perintah satu per satu, baca hasilnya, lanjut"
             ),
         ),
+        "browser": ToolGroup(
+            name="browser",
+            description="Fill web forms, automate browsers, fill Amal Yaumi on SIS Al Uswah",
+            tool_names=[
+                "open_app", "search_youtube", "play_youtube",
+    "browser_navigate", "browser_snapshot",
+                "browser_fill_by_label", "browser_select_by_label",
+                "browser_click_by_text", "browser_screenshot",
+                "browser_close", "browser_status",
+                "browser_save_form_data", "browser_load_form_data",
+                "amal_yaumi_fill",
+            ],
+            system_prompt=(
+                "Kamu adalah browser agent. Tugasmu mengisi formulir web dan "
+                "mengotomasi browser menggunakan Chromium.\n\n"
+                "ATURAN:\n"
+                "1. Navigasi dulu dengan browser_navigate, lalu cek struktur form "
+                "dengan browser_snapshot\n"
+                "2. Isi field pakai browser_fill_by_label / browser_select_by_label "
+                "dengan label yang terlihat di halaman\n"
+                "3. Klik tombol pakai browser_click_by_text\n"
+                "4. Untuk Amal Yaumi SIS Al Uswah, gunakan amal_yaumi_fill dengan "
+                "entries berisi pekanName + data sholat & extras\n"
+                "5. Simpan data formulir yang dijawab user sekali dengan "
+                "browser_save_form_data supaya bisa dipakai lagi\n"
+                "6. Satu tool per langkah, baca hasilnya sebelum lanjut"
+            ),
+        ),
         "memory": ToolGroup(
             name="memory",
             description="Store memories, manage todo list",
@@ -84,15 +113,24 @@ def get_default_groups() -> Dict[str, ToolGroup]:
         ),
         "youtube": ToolGroup(
             name="youtube",
-            description="Search and play YouTube videos",
-            tool_names=["search_youtube", "play_youtube"],
+            description="Search and play YouTube videos, manage music playlists",
+            tool_names=[
+                "search_youtube", "play_youtube", "play_mv",
+                "list_playlists", "create_playlist", "delete_playlist",
+                "rename_playlist", "add_to_playlist", "remove_from_playlist",
+                "download_to_playlist", "play_playlist",
+            ],
             system_prompt=(
-                "Kamu adalah YouTube player. Tugasmu mencari dan memutar lagu/video dari YouTube.\n\n"
+                "Kamu adalah YouTube player. Tugasmu mencari dan memutar lagu/video dari YouTube "
+                "serta mengelola playlist musik.\n\n"
                 "ATURAN:\n"
                 "1. Cari dulu dengan search_youtube\n"
                 "2. Pilih hasil paling relevan\n"
                 "3. Putar dengan play_youtube\n"
-                "4. Jangan putar lagu yang sama atau mirip dengan yang baru diputar"
+                "4. Jangan putar lagu yang sama atau mirip dengan yang baru diputar\n"
+                "5. Untuk playlist: list_playlists untuk melihat daftar, create_playlist untuk membuat, "
+                "add_to_playlist untuk menambah lagu, play_playlist untuk memutar (bisa shuffle=True), "
+                "remove_from_playlist / delete_playlist / rename_playlist untuk mengedit"
             ),
         ),
         "file": ToolGroup(
@@ -130,14 +168,26 @@ def get_default_groups() -> Dict[str, ToolGroup]:
 SIMPLE_TOOL_NAMES = [
     # Web
     "web_search", "search_news", "web_fetch",
+    # Information
+    "weather", "system_status", "take_screenshot", "wikipedia_search",
     # Memory & Todo
     "store_memory", "add_todo", "list_todos", "delete_todo", "update_todo",
     # YouTube
-    "search_youtube", "play_youtube",
+    "search_youtube", "play_youtube", "play_mv",
+    "list_playlists", "create_playlist", "delete_playlist",
+    "rename_playlist", "add_to_playlist", "remove_from_playlist",
+    "download_to_playlist", "play_playlist",
     # Navigation & display
-    "open_url", "screen_size", "detect_os",
+    "open_app", "open_url", "screen_size", "detect_os",
     "set_grid_spec", "disable_grid_overlay",
     "get_active_window",
+    # Browser / form automation
+    "browser_navigate", "browser_snapshot",
+    "browser_fill_by_label", "browser_select_by_label",
+    "browser_click_by_text", "browser_screenshot",
+    "browser_close", "browser_status",
+    "browser_save_form_data", "browser_load_form_data",
+    "amal_yaumi_fill",
     # Vision / OCR
     "ocr_screen", "ocr_image",
 ]
@@ -153,6 +203,7 @@ def get_summon_specialist_tool() -> dict:
                 "⚠️ TOOL INI HANYA UNTUK AKSI NYATA. JANGAN GUNAKAN UNTUK CHAT.\n\n"
                 "GUNAKAN summon_specialist HANYA KALAU user meminta:\n"
                 "- Buka/tutup aplikasi → group: desktop\n"
+                "- Isi formulir web / amal yaumi → group: browser\n"
                 "- Install/update/hapus software → group: package\n"
                 "- Simpan fakta tentang user → group: memory\n"
                 "- Putar musik/video → group: youtube\n"
@@ -172,7 +223,7 @@ def get_summon_specialist_tool() -> dict:
                 "properties": {
                     "group": {
                         "type": "string",
-                        "enum": ["desktop", "package", "memory", "youtube", "file", "display", "vision"],
+                        "enum": ["desktop", "browser", "package", "memory", "youtube", "file", "display", "vision"],
                         "description": "Specialist group: desktop, package, memory, youtube, file, display, vision",
                     },
                     "request": {
@@ -195,3 +246,4 @@ def filter_tool_definitions(
     """Filter tool definitions to only include those in the given group."""
     names = set(group.tool_names)
     return [t for t in all_tools if t.get("function", {}).get("name") in names]
+

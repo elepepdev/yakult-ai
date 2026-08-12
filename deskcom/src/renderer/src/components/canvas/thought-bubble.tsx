@@ -2,8 +2,22 @@ import { Box, Text } from '@chakra-ui/react';
 import { useEffect, useRef, useState } from 'react';
 import { useSubtitle } from '@/context/subtitle-context';
 import { FormattedText } from '@/components/ui/formatted-text';
+import { useVrmHeadPosition } from '@/hooks/utils/use-vrm-head-position';
 
 type BubblePhase = 'hidden' | 'showing' | 'popping';
+
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(
+    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const onChange = (e: MediaQueryListEvent) => setReduced(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return reduced;
+}
 
 /**
  * Comic-style thought bubble shown above the character's head for
@@ -12,6 +26,8 @@ type BubblePhase = 'hidden' | 'showing' | 'popping';
  */
 export function ThoughtBubble() {
   const { subconsciousText, dismissSubconscious } = useSubtitle();
+  const reducedMotion = usePrefersReducedMotion();
+  const headPos = useVrmHeadPosition();
   const [phase, setPhase] = useState<BubblePhase>('hidden');
   const [displayText, setDisplayText] = useState('');
   const popTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -43,20 +59,32 @@ export function ThoughtBubble() {
 
   if (phase === 'hidden' || !displayText) return null;
 
+  const animation = reducedMotion
+    ? 'none'
+    : phase === 'popping'
+      ? 'sk-pop 0.32s ease-in forwards'
+      : 'sk-pop-in 0.25s ease-out';
+
+  // Anchor above the character's head (head center px → bubble centered, with
+  // the ~40px thought-trail reaching down toward the head). Fall back to the
+  // default top-center position until the model is loaded.
+  const BUBBLE_W = 340;
+  const anchorStyle = headPos
+    ? {
+        left: `${Math.max(8, Math.min(window.innerWidth - BUBBLE_W - 8, headPos.x - BUBBLE_W / 2))}px`,
+        top: 'auto',
+        bottom: `${Math.max(8, window.innerHeight - headPos.y + 44)}px`,
+        transform: 'none',
+      }
+    : { top: '32vh', left: '50%', transform: 'translateX(-50%)' };
+
   return (
     <Box
       position="fixed"
-      top="32vh"
-      left="50%"
-      transform="translateX(-50%)"
       zIndex={500}
       pointerEvents="none"
-      css={{
-        animation:
-          phase === 'popping'
-            ? 'sk-pop 0.32s ease-in forwards'
-            : 'sk-pop-in 0.25s ease-out',
-      }}
+      style={anchorStyle}
+      css={{ animation }}
     >
       {/* Thought trail — small circles descending toward the head */}
       <Box

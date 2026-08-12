@@ -7,7 +7,6 @@ Menggunakan LLM dengan rate limit tinggi (Groq) agar tool calls cepat dan murah.
 """
 
 import uuid
-import asyncio
 from typing import Dict, Any, List, Optional, Callable
 from dataclasses import dataclass, field
 from loguru import logger
@@ -90,13 +89,14 @@ class ToolAgent:
         self,
         user_message: str,
         conversation_context: Optional[List[Dict[str, Any]]] = None,
-        on_status_update: Optional[Callable[[Dict[str, Any]], None]] = None,
+        on_status_update: Optional[Callable[[Dict[str, Any]], Any]] = None,
     ) -> ToolResult:
         """Process a user message with full tool access.
 
         Args:
             user_message: The user's input text
             conversation_context: Optional previous conversation context
+            on_status_update: Optional callback for streaming tool status updates in real-time
 
         Returns:
             ToolResult with tool execution results
@@ -222,12 +222,11 @@ class ToolAgent:
                             tool_statuses_batch.append(update)
                             if on_status_update:
                                 try:
-                                    if asyncio.iscoroutinefunction(on_status_update):
-                                        await on_status_update(update)
-                                    else:
-                                        on_status_update(update)
-                                except Exception as e:
-                                    logger.warning(f"Error in on_status_update callback: {e}")
+                                    res = on_status_update(update)
+                                    if asyncio.iscoroutine(res):
+                                        await res
+                                except Exception as err:
+                                    logger.warning(f"ToolAgent: error in on_status_update callback: {err}")
                 except StopAsyncIteration:
                     logger.warning("ToolAgent: Tool executor finished without final marker")
 

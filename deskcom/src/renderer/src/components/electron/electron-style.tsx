@@ -17,7 +17,7 @@ export const inputSubtitleStyles = {
   box: {
     w: '420px',
     rounded: 'xl',
-    overflow: 'visible',
+    overflow: 'hidden',
     boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
     bg: 'rgba(20, 20, 40, 0.65)',
     backdropFilter: 'blur(18px)',
@@ -32,6 +32,7 @@ export const inputSubtitleStyles = {
     gap: 1,
     alignItems: 'stretch',
     justify: 'flex-end',
+    bg: 'var(--sk-paper-deep)',
   },
 
   messageText: {

@@ -56,6 +56,9 @@ const HEAD_OFFSET_EULER = new THREE.Euler(0, 0, 0, 'YXZ');
 const EYE_OFFSET_QUAT = new THREE.Quaternion();
 const EYE_OFFSET_EULER = new THREE.Euler(0, 0, 0, 'YXZ');
 
+// Temp objects for projecting the head bone to screen px (avoid per-frame allocations)
+const HEAD_PROJ_POS = new THREE.Vector3();
+
 // Temp objects for idle arm-spread quaternion math (avoid per-frame allocations)
 const ARM_OFFSET_QUAT = new THREE.Quaternion();
 const ARM_OFFSET_EULER = new THREE.Euler(0, 0, 0, 'XYZ');
@@ -272,6 +275,10 @@ export function useVRM({ modelInfo, canvasRef }: UseVRMProps) {
   const headBaseQuatRef = useRef<THREE.Quaternion | null>(null);
   const leftEyeBoneRef = useRef<THREE.Object3D | null>(null);
   const rightEyeBoneRef = useRef<THREE.Object3D | null>(null);
+
+  // Last projected head screen position (px) for the chat bubble anchor
+  const headScreenPosRef = useRef<{ x: number; y: number } | null>(null);
+  const lastHeadBroadcastMsRef = useRef(0);
 
   // Expression smoothing — target weights that the animation loop lerps toward
   const expressionTargetsRef = useRef<Record<string, number>>({});
@@ -1058,46 +1065,96 @@ export function useVRM({ modelInfo, canvasRef }: UseVRMProps) {
 
     rendererRef.current.render(sceneRef.current, cameraRef.current);
 
+    // --- Publish head screen position for floating UI (chat bubble anchoring) ---
+    // The VRM is draggable in world space, so any overlay pinned to the character
+    // must track it. Project the head bone to canvas pixels and broadcast it.
+    // getWorldPosition() updates matrices on demand (same as the shoulder/hair
+    // tracking above) without baking scale into children.
+    if (vrmRef.current?.humanoid && canvasRef.current && cameraRef.current) {
+      const headNode = vrmRef.current.humanoid.getNormalizedBoneNode('head');
+      if (headNode) {
+        const ndc = headNode.getWorldPosition(HEAD_PROJ_POS).project(cameraRef.current);
+        if (ndc.z < 1 && ndc.z > -1) {
+          const canvas = canvasRef.current;
+          const x = (ndc.x * 0.5 + 0.5) * canvas.clientWidth;
+          const y = (-ndc.y * 0.5 + 0.5) * canvas.clientHeight;
+          const last = headScreenPosRef.current;
+          const now = performance.now();
+          // Throttle: only broadcast when the anchor moved and enough time passed.
+          // A floating bubble only needs ~15fps tracking; the idle sway otherwise
+          // fires this event every frame, re-rendering the bubble at 60fps.
+          if (
+            (!last || Math.abs(last.x - x) > 1 || Math.abs(last.y - y) > 1) &&
+            now - (lastHeadBroadcastMsRef.current || 0) > 60
+          ) {
+            lastHeadBroadcastMsRef.current = now;
+            headScreenPosRef.current = { x, y };
+            window.dispatchEvent(new CustomEvent('vrm-head-screen-position', { detail: { x, y } }));
+          }
+        }
+      }
+    }
+
     animationIdRef.current = requestAnimationFrame(animate);
   }, []);
+
+  /**
+   * Set one or more expressions (emotions + optional eye-close) on the VRM.
+   * Multiple blend shapes are applied together so the AI can combine an
+   * emotion (e.g. happy) with closed eyes for a "smiling closed-eye" look.
+   * `blink` (sleepy) does a short drowsy blink then opens; winks hold closed
+   * until released by openEyes().
+   */
+  const setExpressions = useCallback((expressionNames: string[], weight: number = 1.0) => {
+    const vrm = vrmRef.current;
+    if (!vrm || !vrm.expressionManager) return;
+
+    const emotionMap = getEmotionMap();
+    const exprMap = vrm.expressionManager.expressionMap || {};
+
+    // Map each AI expression name through the emotion map to a blend shape
+    const blendShapes = expressionNames
+      .map((name) => emotionMap[name] || name)
+      .filter((name) => name in exprMap);
+
+    if (blendShapes.length === 0) return;
+
+    // Reset all expression targets to 0, then set the requested ones.
+    // `blink` is owned by AutoBlink (it writes the value every frame), so its
+    // expression target stays 0 — that way after a drowsy-blink auto-release
+    // the smoothing loop eases the eye back open instead of re-pulling it shut.
+    const allExpressions = Object.keys(exprMap);
+    for (const name of allExpressions) {
+      expressionTargetsRef.current[name] = 0;
+    }
+    for (const name of blendShapes) {
+      if (name === 'blink') continue;
+      expressionTargetsRef.current[name] = Math.max(0, Math.min(1, weight));
+    }
+
+    // Eye-close shapes. `blink` (sleepy) is a slow drowsy blink — close fully
+    // for ~0.35s then let the eyes open naturally, so the character doesn't
+    // talk with eyes glued shut. Win/blinkLeft/blinkRight hold until openEyes().
+    const EYE_CLOSE_SHAPES = new Set(['blink', 'blinkLeft', 'blinkRight']);
+    const eyeCloseShape = blendShapes.find((name) => EYE_CLOSE_SHAPES.has(name));
+    if (autoBlinkRef.current) {
+      const holdDuration = eyeCloseShape === 'blink' ? 0.35 : 0;
+      autoBlinkRef.current.holdClosed(!!eyeCloseShape, holdDuration);
+      if (!eyeCloseShape) {
+        autoBlinkRef.current.setEnable(false);
+      }
+    }
+
+    currentEmotionRef.current = blendShapes.join(',');
+    setState(prev => ({ ...prev, currentExpression: blendShapes[0] || 'neutral' }));
+  }, [getEmotionMap]);
 
   /**
    * Set expression (emotion) on the VRM model
    */
   const setExpression = useCallback((expressionName: string, weight: number = 1.0) => {
-    const vrm = vrmRef.current;
-    if (!vrm || !vrm.expressionManager) return;
-
-    const emotionMap = getEmotionMap();
-    const blendShapeName = emotionMap[expressionName] || expressionName;
-
-    // Check if this blend shape exists
-    if (!(blendShapeName in (vrm.expressionManager.expressionMap || {}))) {
-      console.warn(`VRM expression "${blendShapeName}" not found`);
-      return;
-    }
-
-    // Reset all expression targets to 0, then set the target
-    const allExpressions = Object.keys(vrm.expressionManager.expressionMap || {});
-    for (const name of allExpressions) {
-      expressionTargetsRef.current[name] = 0;
-    }
-    expressionTargetsRef.current[blendShapeName] = Math.max(0, Math.min(1, weight));
-
-    // Disable auto-blink during emotion, wait for eye to open before applying
-    if (autoBlinkRef.current && blendShapeName !== 'neutral') {
-      const waitTime = autoBlinkRef.current.setEnable(false);
-      if (waitTime > 0) {
-        // Eye is currently closed — defer emotion application
-        setTimeout(() => {
-          expressionTargetsRef.current[blendShapeName] = Math.max(0, Math.min(1, weight));
-        }, waitTime * 1000);
-      }
-    }
-
-    currentEmotionRef.current = blendShapeName;
-    setState(prev => ({ ...prev, currentExpression: blendShapeName }));
-  }, [getEmotionMap]);
+    setExpressions([expressionName], weight);
+  }, [setExpressions]);
 
   /**
    * Reset VRM expression to neutral
@@ -1115,13 +1172,32 @@ export function useVRM({ modelInfo, canvasRef }: UseVRMProps) {
       expressionTargetsRef.current['neutral'] = 1.0;
     }
 
-    // Re-enable auto-blink when returning to neutral
+    // Re-enable auto-blink and release any closed-eye hold when returning to neutral
     if (autoBlinkRef.current) {
+      autoBlinkRef.current.holdClosed(false);
       autoBlinkRef.current.setEnable(true);
     }
 
     currentEmotionRef.current = 'neutral';
     setState(prev => ({ ...prev, currentExpression: 'neutral' }));
+  }, []);
+
+  /**
+   * Open the eyes back up (release any AI-driven closed-eye hold) while keeping
+   * the current emotion. Used when the AI finishes speaking so the character
+   * doesn't sit there with closed eyes mid-emotion.
+   */
+  const openEyes = useCallback(() => {
+    // Clear the blink targets so the smoothing loop eases the eyes open instead
+    // of snapping them shut again (they were being re-pulled to the closed
+    // weight every frame). Auto-blink takes over naturally after a blink cycle.
+    for (const name of ['blink', 'blinkLeft', 'blinkRight']) {
+      expressionTargetsRef.current[name] = 0;
+    }
+    if (autoBlinkRef.current) {
+      autoBlinkRef.current.holdClosed(false);
+      autoBlinkRef.current.setEnable(true);
+    }
   }, []);
 
   /**
@@ -1505,7 +1581,9 @@ export function useVRM({ modelInfo, canvasRef }: UseVRMProps) {
     isLoaded: state.isLoaded,
     currentExpression: state.currentExpression,
     setExpression,
+    setExpressions,
     resetExpression,
+    openEyes,
     setViseme,
     clearVisemes,
     startLipSync,

@@ -1,6 +1,6 @@
 import io
 import os
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 TEXT_EXTENSIONS = {
     ".txt", ".md", ".markdown", ".json", ".yaml", ".yml", ".xml", ".csv",
@@ -14,8 +14,6 @@ OCR_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
 
 MAX_TEXT_TOKENS = 2000
 MAX_TEXT_CHARS = MAX_TEXT_TOKENS * 4  # ~4 chars/token for latin text
-
-
 def _kind_for(filename: str, mime_type: str) -> str:
     ext = os.path.splitext(filename or "")[1].lower()
     if ext in IMAGE_EXTENSIONS or (mime_type or "").startswith("image/"):
@@ -39,10 +37,10 @@ def _decode_text(data: bytes) -> str:
         return data.decode("utf-8", errors="replace")
 
 
-def _truncate(text: str) -> Tuple[str, bool]:
-    if len(text) <= MAX_TEXT_CHARS:
+def _truncate(text: str, max_chars: int = MAX_TEXT_CHARS) -> Tuple[str, bool]:
+    if len(text) <= max_chars:
         return text, False
-    return text[:MAX_TEXT_CHARS] + "\n...[truncated]", True
+    return text[:max_chars] + "\n...[truncated]", True
 
 
 def _extract_pdf(data: bytes, enable_ocr: bool) -> str:
@@ -80,13 +78,13 @@ def _extract_image_ocr(data: bytes) -> str:
         return ""
 
 
-def extract_file(data: bytes, filename: str = "", mime_type: str = "", enable_ocr: bool = True) -> Dict:
+def extract_file(data: bytes, filename: str = "", mime_type: str = "", enable_ocr: bool = True, token_budget: int = MAX_TEXT_TOKENS) -> Dict:
     """Extract readable text from an uploaded file.
 
     Returns:
         dict with keys:
             kind: 'text' | 'image' | 'pdf' | 'docx'
-            text: extracted text (truncated to MAX_TEXT_CHARS)
+            text: extracted text (truncated to token_budget)
             truncated: bool
             error: optional error message
     """
@@ -106,7 +104,7 @@ def extract_file(data: bytes, filename: str = "", mime_type: str = "", enable_oc
         error = str(e)
 
     if kind != "image":
-        text, truncated = _truncate(text or "")
+        text, truncated = _truncate(text or "", token_budget * 4)
     else:
         truncated = False
 
@@ -119,9 +117,3 @@ def extract_file(data: bytes, filename: str = "", mime_type: str = "", enable_oc
         "mime_type": mime_type,
         "size": len(data),
     }
-
-
-def ocr_image_from_pil(img) -> str:
-    """OCR a PIL image to text (used by the OCR tool and PDF scan fallback)."""
-    from .ocr import ocr_image_from_pil as _ocr
-    return _ocr(img)

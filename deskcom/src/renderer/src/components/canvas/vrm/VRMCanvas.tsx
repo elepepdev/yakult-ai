@@ -20,7 +20,9 @@ export const VRMCanvas = memo(
     const {
       isLoaded,
       setExpression,
+      setExpressions,
       resetExpression,
+      openEyes,
       startLipSync,
       stopLipSync,
       playVRMA,
@@ -39,9 +41,8 @@ export const VRMCanvas = memo(
         const { expressions } = e.detail || {};
 
         if (expressions && expressions.length > 0) {
-          const expr = expressions[0];
-          const exprName = typeof expr === 'string' ? expr : String(expr);
-          setExpression(exprName);
+          const exprNames = expressions.map((expr: unknown) => typeof expr === 'string' ? expr : String(expr));
+          setExpressions(exprNames);
         }
       };
 
@@ -83,6 +84,9 @@ export const VRMCanvas = memo(
     useEffect(() => {
       if (!isLoaded) return;
       if (aiState === AiStateEnum.IDLE) {
+        // Open the eyes immediately when the AI finishes speaking, keeping the
+        // emotion until the delayed reset below fades back to neutral.
+        openEyes();
         const timer = setTimeout(() => {
           resetExpression();
           stopLipSync();
@@ -93,7 +97,7 @@ export const VRMCanvas = memo(
         resetExpression();
         stopLipSync();
       }
-    }, [aiState, isLoaded, resetExpression, stopLipSync]);
+    }, [aiState, isLoaded, resetExpression, stopLipSync, openEyes]);
 
     // Enable random pose animations only while the AI is fully idle
     useEffect(() => {
@@ -225,9 +229,9 @@ export const VRMCanvas = memo(
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
-              color: '#8888cc',
+              color: 'var(--sk-pencil)',
               fontSize: '14px',
-              fontFamily: 'sans-serif',
+              fontFamily: 'var(--sk-font-body)',
               textAlign: 'center',
             }}
           >

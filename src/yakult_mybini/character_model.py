@@ -289,6 +289,77 @@ class VRMModel(CharacterModel):
 
 
 # ---------------------------------------------------------------------------
+# Orb model implementation
+# ---------------------------------------------------------------------------
+
+DEFAULT_ORB_EMOTION_MAP: dict[str, str] = {
+    "-_-": "-_-",
+    "x_x": "x_x",
+    "^_^": "^_^",
+    "T_T": "T_T",
+    ">_<": ">_<",
+    "o_O": "o_O",
+    "0_0": "0_0",
+    "♥_♥": "♥_♥",
+    "*_*": "*_*",
+    "@_@": "@_@",
+    "._.": "._.",
+    ";_;": ";_;",
+    "u_u": "u_u",
+    "U_U": "U_U",
+    "z_z": "z_z",
+    "q_q": "q_q",
+    ">_>": ">_>",
+    "^_~": "^_~",
+    "n_n": "n_n",
+}
+
+
+class OrbModel(CharacterModel):
+    """Character model for the J.A.R.V.I.S-style blue orb (Jenny).
+
+    Emotion tags are ASCII emotes themselves (e.g. ``[^_^]``).  The
+    frontend canvas renderer displays whatever emot value it receives.
+    """
+
+    model_type: str = "orb"
+
+    def __init__(
+        self, model_name: str, model_dict_path: str = "model_dict.json"
+    ) -> None:
+        super().__init__(model_name, model_dict_path)
+
+        # Fall back to the default emot map if the entry doesn't have one
+        if not self.model_info.get("emotionMap"):
+            self.model_info["emotionMap"] = dict(DEFAULT_ORB_EMOTION_MAP)
+            self._build_emo_map()
+
+    def _build_emo_map(self) -> None:
+        # Orb emotes are case-sensitive (u_u sad vs U_U explain), so keep keys
+        # verbatim instead of lowercasing like the base class.
+        raw = self.model_info.get("emotionMap") or {}
+        self.emo_map = dict(raw)
+        self.emo_str = " ".join(f"[{key}]," for key in self.emo_map)
+
+    def extract_emotion(self, str_to_check: str) -> list:
+        # Case-sensitive tag matching (preserves u_u vs U_U distinction).
+        result = []
+        i = 0
+        while i < len(str_to_check):
+            if str_to_check[i] != "[":
+                i += 1
+                continue
+            for key in self.emo_map:
+                tag = f"[{key}]"
+                if str_to_check[i : i + len(tag)] == tag:
+                    result.append(self.emo_map[key])
+                    i += len(tag) - 1
+                    break
+            i += 1
+        return result
+
+
+# ---------------------------------------------------------------------------
 # Factory
 # ---------------------------------------------------------------------------
 
@@ -320,6 +391,10 @@ def create_character_model(
     if model_type == "vrm":
         logger.info(f"Creating VRM model: {model_name}")
         return VRMModel(model_name, model_dict_path)
+
+    if model_type == "orb":
+        logger.info(f"Creating Orb model: {model_name}")
+        return OrbModel(model_name, model_dict_path)
 
     logger.info(f"Creating Live2D model: {model_name}")
     # Use the original Live2dModel from live2d_model.py for full backward compat

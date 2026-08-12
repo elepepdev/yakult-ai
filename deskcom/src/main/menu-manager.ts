@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import {
-  Tray, nativeImage, Menu, BrowserWindow, ipcMain, screen, MenuItemConstructorOptions, app,
+  Tray, nativeImage, Menu, BrowserWindow, ipcMain, screen, MenuItemConstructorOptions, app, shell,
 } from 'electron';
 // @ts-expect-error
 import trayIcon from '../../resources/icon.png?asset';
@@ -60,6 +60,13 @@ export class MenuManager {
           windows.forEach((window) => {
             window.hide();
           });
+        },
+      },
+      { type: 'separator' as const },
+      {
+        label: 'Open Web Version',
+        click: () => {
+          shell.openExternal('http://localhost:12393/');
         },
       },
       { type: 'separator' as const },

@@ -1,5 +1,6 @@
-import { Box, Flex, IconButton, Spinner, Text, Tooltip } from '@chakra-ui/react';
+import { Box, Flex, IconButton, Spinner, Text } from '@chakra-ui/react';
 import { LuFile, LuImage, LuX, LuPaperclip } from 'react-icons/lu';
+import { Tooltip } from '@/components/ui/tooltip';
 import type { AttachedFile } from '@/hooks/utils/use-file-attach';
 
 interface Props {
@@ -19,15 +20,15 @@ function formatSize(bytes: number): string {
 
 export function FileAttachButton({ onPick, uploading }: Pick<Props, 'onPick' | 'uploading'>) {
   return (
-    <Tooltip label="Attach file" hasArrow>
+    <Tooltip content="Attach file">
       <IconButton
         aria-label="Attach file"
         variant="ghost"
         color="#c0c0e0"
         size="xs"
-        _hover={{ bg: 'whiteAlpha.200', color: '#ffffff' }}
+        _hover={{ bg: 'var(--sk-outline)', color: '#ffffff' }}
         onClick={onPick}
-        isDisabled={uploading}
+        disabled={uploading}
       >
         {uploading ? <Spinner size="xs" /> : <LuPaperclip size={16} />}
       </IconButton>
@@ -44,10 +45,10 @@ export function FileAttachChips({ files, onRemove }: Pick<Props, 'files' | 'onRe
           key={f.id}
           align="center"
           gap="1"
-          bg="rgba(120,120,220,0.2)"
-          border="1px solid"
-          borderColor="rgba(120,120,220,0.35)"
-          rounded="md"
+          bg="var(--sk-paper-input)"
+          border="1.5px solid"
+          borderColor="var(--sk-outline-soft)"
+          borderRadius="8px 6px 9px 5px"
           px="2"
           py="0.5"
           maxW="100%"
@@ -55,7 +56,11 @@ export function FileAttachChips({ files, onRemove }: Pick<Props, 'files' | 'onRe
           <Box color="#a0a0d0">
             {f.kind === 'image' ? <LuImage size={12} /> : <LuFile size={12} />}
           </Box>
-          <Text fontSize="xs" color="#d0d0f0" isTruncated maxW="160px">
+          <Text
+            fontSize="xs"
+            color="#d0d0f0"
+            css={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px' }}
+          >
             {f.name}
           </Text>
           <Text fontSize="2xs" color="#7777aa">

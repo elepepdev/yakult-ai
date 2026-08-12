@@ -9,7 +9,7 @@ from ..message_handler import message_handler
 from .types import WebSocketSend, BroadcastContext
 from .tts_manager import TTSTaskManager
 from ..agent.output_types import SentenceOutput, AudioOutput
-from ..agent.input_types import BatchInput, TextData, ImageData, TextSource, ImageSource
+from ..agent.input_types import BatchInput, TextData, ImageData, FileData, TextSource, ImageSource
 from ..asr.asr_interface import ASRInterface
 from ..live2d_model import Live2dModel
 from ..tts.tts_interface import TTSInterface
@@ -23,6 +23,7 @@ def create_batch_input(
     images: Optional[List[Dict[str, Any]]],
     from_name: str,
     metadata: Optional[Dict[str, Any]] = None,
+    files: Optional[List[Dict[str, Any]]] = None,
 ) -> BatchInput:
     """Create batch input for agent processing"""
     image_width_hint = ""
@@ -72,11 +73,32 @@ def create_batch_input(
 
     text_content = input_text + image_width_hint if image_width_hint else input_text
 
+    processed_files = []
+    for f in (files or []):
+        name = f.get("name", "")
+        mime_type = f.get("mime_type", "application/octet-stream")
+        data = f.get("data", "")
+        kind = f.get("kind", "")
+        if kind == "image":
+            if data:
+                processed_images.append(
+                    ImageData(
+                        source=ImageSource.UPLOAD,
+                        data=data,
+                        mime_type=mime_type,
+                    )
+                )
+        elif data:
+            processed_files.append(
+                FileData(name=name, data=data, mime_type=mime_type)
+            )
+
     return BatchInput(
         texts=[
             TextData(source=TextSource.INPUT, content=text_content, from_name=from_name)
         ],
         images=processed_images if processed_images else None,
+        files=processed_files if processed_files else None,
         metadata=metadata,
     )
 

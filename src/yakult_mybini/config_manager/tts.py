@@ -428,16 +428,19 @@ class SiliconFlowTTSConfig(I18nMixin):
             en="API key for SiliconFlow TTS service",
             zh="SiliconFlow TTS 服务的 API 密钥",
         ),
-        "url": Description(
+        "api_url": Description(
             en="API endpoint URL for SiliconFlow TTS",
             zh="SiliconFlow TTS 的 API 端点 URL",
         ),
-        "model": Description(
+        "default_model": Description(
             en="Model to use for SiliconFlow TTS", zh="SiliconFlow TTS 使用的模型"
         ),
-        "voice": Description(
+        "default_voice": Description(
             en="Voice name to use for SiliconFlow TTS",
             zh="SiliconFlow TTS 使用的语音名称",
+        ),
+        "response_format": Description(
+            en="Output audio format (e.g. mp3)", zh="输出音频格式（如 mp3）"
         ),
         "sample_rate": Description(
             en="Sample rate of the output audio", zh="输出音频的采样率"

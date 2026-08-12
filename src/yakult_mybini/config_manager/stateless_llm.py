@@ -47,6 +47,9 @@ class StatelessLLMWithTemplate(StatelessLLMBaseConfig):
             en="What sampling temperature to use, between 0 and 2.",
             zh="使用的采样温度，介于 0 和 2 之间。",
         ),
+        "template": Description(
+            en="Chat template format (e.g. CHATML)", zh="对话模板格式（如 CHATML）"
+        ),
     }
 
     DESCRIPTIONS: ClassVar[dict[str, Description]] = {
@@ -67,6 +70,7 @@ class OpenAICompatibleConfig(StatelessLLMBaseConfig):
     max_tokens: int | None = Field(None, alias="max_tokens")
     top_p: float | None = Field(None, alias="top_p")
     presence_penalty: float | None = Field(None, alias="presence_penalty")
+    supports_images: bool = Field(True, alias="supports_images")
 
     _OPENAI_COMPATIBLE_DESCRIPTIONS: ClassVar[dict[str, Description]] = {
         "base_url": Description(en="Base URL for the API endpoint", zh="API的URL端点"),
@@ -93,6 +97,10 @@ class OpenAICompatibleConfig(StatelessLLMBaseConfig):
         "presence_penalty": Description(
             en="Penalize new tokens based on presence (-2.0 to 2.0). None = provider default.",
             zh="根据存在情况惩罚新 token (-2.0 到 2.0)。None = 提供商默认值。",
+        ),
+        "supports_images": Description(
+            en="Whether the model accepts image inputs. Set to false for text-only models.",
+            zh="模型是否接受图像输入。纯文本模型请设为 false。",
         ),
     }
 
@@ -256,6 +264,42 @@ class CloudflareWorkersConfig(OpenAICompatibleConfig):
     }
 
 
+class OpenCodeZenConfig(OpenAICompatibleConfig):
+    """Configuration for OpenCode Zen API (pay-as-you-go gateway).
+
+    OpenAI-compatible endpoint proxying curated models (GPT, Claude, Gemini,
+    DeepSeek, Grok, etc.). API key from https://opencode.ai/auth.
+    """
+
+    base_url: str = Field("https://opencode.ai/zen/v1", alias="base_url")
+    interrupt_method: Literal["system", "user"] = Field(
+        "system", alias="interrupt_method"
+    )
+
+
+class OpenCodeGoConfig(OpenAICompatibleConfig):
+    """Configuration for OpenCode Go API (subscription gateway).
+
+    Same OpenAI-compatible surface as Zen but served from the Go plan endpoint.
+    API key from the OpenCode Go subscription.
+    """
+
+    base_url: str = Field("https://opencode.ai/zen/go/v1", alias="base_url")
+    interrupt_method: Literal["system", "user"] = Field(
+        "system", alias="interrupt_method"
+    )
+
+
+class JuanRouterConfig(OpenAICompatibleConfig):
+    """Configuration for the Juan Router OpenAI-compatible gateway."""
+
+    base_url: str = Field("https://router.juan.web.id/v1", alias="base_url")
+    model: str = Field("auto", alias="model")
+    interrupt_method: Literal["system", "user"] = Field(
+        "system", alias="interrupt_method"
+    )
+
+
 class ClaudeConfig(StatelessLLMBaseConfig):
     """Configuration for OpenAI Official API."""
 
@@ -325,6 +369,9 @@ class StatelessLLMConfigs(I18nMixin, BaseModel):
     cloudflare_workers_llm: CloudflareWorkersConfig | None = Field(
         None, alias="cloudflare_workers_llm"
     )
+    opencode_zen_llm: OpenCodeZenConfig | None = Field(None, alias="opencode_zen_llm")
+    opencode_go_llm: OpenCodeGoConfig | None = Field(None, alias="opencode_go_llm")
+    juan_router_llm: JuanRouterConfig | None = Field(None, alias="juan_router_llm")
     claude_llm: ClaudeConfig | None = Field(None, alias="claude_llm")
     llama_cpp_llm: LlamaCppConfig | None = Field(None, alias="llama_cpp_llm")
     mistral_llm: MistralConfig | None = Field(None, alias="mistral_llm")
@@ -356,11 +403,26 @@ class StatelessLLMConfigs(I18nMixin, BaseModel):
         ),
         "groq_llm": Description(en="Configuration for Groq API", zh="Groq API 配置"),
         "grok_llm": Description(en="Configuration for xAI Grok API", zh="xAI Grok API 配置"),
+        "openrouter_llm": Description(
+            en="Configuration for OpenRouter API", zh="OpenRouter API 配置"
+        ),
         "nvidia_nim_llm": Description(
             en="Configuration for NVIDIA NIM API", zh="NVIDIA NIM API 配置"
         ),
         "cloudflare_workers_llm": Description(
             en="Configuration for Cloudflare Workers AI", zh="Cloudflare Workers AI 配置"
+        ),
+        "opencode_zen_llm": Description(
+            en="Configuration for OpenCode Zen API (pay-as-you-go gateway)",
+            zh="OpenCode Zen API 配置（按量付费网关）",
+        ),
+        "opencode_go_llm": Description(
+            en="Configuration for OpenCode Go API (subscription gateway)",
+            zh="OpenCode Go API 配置（订阅制网关）",
+        ),
+        "juan_router_llm": Description(
+            en="Configuration for Juan Router API",
+            zh="Juan Router API 配置",
         ),
         "claude_llm": Description(
             en="Configuration for Claude API", zh="Claude API配置"
@@ -369,3 +431,4 @@ class StatelessLLMConfigs(I18nMixin, BaseModel):
             en="Configuration for local Llama.cpp", zh="本地Llama.cpp配置"
         ),
     }
+

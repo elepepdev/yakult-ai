@@ -14,7 +14,6 @@ login survives across runs. Tools:
     browser_save_form_data, browser_load_form_data
 """
 
-import asyncio
 import json
 import os
 import sys
@@ -57,7 +56,9 @@ async def _ensure_page() -> Any:
     if _page and not _page.is_closed():
         return _page
     if _pw is None:
-        _pw = await asyncio.import_module("playwright.async_api").async_playwright().start()
+        import importlib
+        pw_module = importlib.import_module("playwright.async_api")
+        _pw = await pw_module.async_playwright().start()
     os.makedirs(PROFILE_DIR, exist_ok=True)
     # ponytail: persistent context keeps portal login; headed so the user can watch
     _context = await _pw.chromium.launch_persistent_context(
@@ -74,6 +75,7 @@ async def _ensure_page() -> Any:
     _browser = _context.browser
     _page = _context.pages[0] if _context.pages else await _context.new_page()
     await _page.add_init_script(AY_JS)
+    await _page.add_init_script(GENERIC_JS)
     return _page
 
 
@@ -97,6 +99,8 @@ AY_JS = r"""
 'use strict';
 const D = { S: 600, M: 1000, L: 1600, XL: 2400 };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+const __ay = {};
+window.__ay = __ay;
 
 function findByText(sel, txt, root=document) {
   for (const el of root.querySelectorAll(sel))
@@ -113,6 +117,7 @@ function findLabel(txt) {
   }
   return null;
 }
+__ay.findLabel = findLabel;
 function nearSelect(lbl) {
   if (!lbl) return null;
   let p = lbl.parentElement;
@@ -133,6 +138,7 @@ function nearSelect(lbl) {
   }
   return null;
 }
+__ay.nearSelect = nearSelect;
 function nearInput(lbl) {
   if (!lbl) return null;
   let p = lbl.parentElement;
@@ -153,6 +159,7 @@ function nearInput(lbl) {
   }
   return null;
 }
+__ay.nearInput = nearInput;
 async function setSelect(sel, value) {
   if (!sel) return false;
   const opts = Array.from(sel.options);
@@ -164,6 +171,7 @@ async function setSelect(sel, value) {
   await sleep(350);
   return true;
 }
+__ay.setSelect = setSelect;
 async function setInput(inp, value) {
   if (!inp) return false;
   inp.focus(); inp.value=''; inp.value=String(value);
@@ -171,6 +179,7 @@ async function setInput(inp, value) {
   await sleep(150);
   return true;
 }
+__ay.setInput = setInput;
 async function clickEl(el) {
   if (!el) return false;
   el.scrollIntoView({behavior:'smooth', block:'center'});
@@ -348,13 +357,13 @@ def distribute(total: int, days: int) -> list[int]:
     return [base + (1 if i < rem else 0) for i in range(days)]
 
 
-def _result(payload: dict, live: bool = False) -> str:
+def _result(payload: dict, live: bool = False) -> CallToolResult:
+    result = CallToolResult(
+        content=[TextContent(type="text", text=json.dumps(payload, ensure_ascii=False))]
+    )
     if live:
-        return CallToolResult(
-            content=[TextContent(type="text", text=json.dumps(payload, ensure_ascii=False))],
-            _meta={"liveViewData": {"debuggerUrl": f"http://127.0.0.1:{DEBUG_PORT}"}},
-        )
-    return json.dumps(payload, ensure_ascii=False)
+        result.meta = {"liveViewData": {"debuggerUrl": f"http://127.0.0.1:{DEBUG_PORT}"}}
+    return result
 
 
 async def _wait_until(page, js_expr: str, timeout_ms: int = 25000, poll: int = 400) -> bool:
@@ -372,7 +381,7 @@ async def _wait_until(page, js_expr: str, timeout_ms: int = 25000, poll: int = 4
 # ─── Generic browser tools ───────────────────────────────────────────────────
 
 @mcp.tool(name="browser_navigate", description="Open a URL in the automation browser (headed Chromium). Use for any web form or portal the user asks you to fill in. Returns current URL, page title, and a snapshot of the form fields found on the page.")
-async def browser_navigate(url: str) -> str:
+async def browser_navigate(url: str) -> CallToolResult:
     try:
         page = await _ensure_page()
         await page.goto(url, wait_until="domcontentloaded", timeout=60000)
@@ -467,29 +476,38 @@ async def browser_status() -> str:
 # ─── Extra JS for generic fill/click (injected alongside AY_JS) ──────────────
 
 GENERIC_JS = r"""
+(() => {
+'use strict';
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 window.__ayFillInputByLabel = async (labelTxt, value) => {
-  const lbl = window.__ay.findLabel ? window.__ay.findLabel(labelTxt) : null;
-  // re-implement inline (init script defines __ayFillDay scope separately)
+  const lbl = window.__ay.findLabel(labelTxt);
+  if (!lbl) return false;
+  const inp = window.__ay.nearInput(lbl);
+  if (!inp) return false;
+  return window.__ay.setInput(inp, value);
 };
 window.__aySelectByLabel = async (labelTxt, value) => {
-  const lbl = window.__ayFindLabel && window.__ayFindLabel(labelTxt);
+  const lbl = window.__ay.findLabel(labelTxt);
   if (!lbl) return false;
-  const s = window.__ayNearSelect ? window.__ayNearSelect(lbl) : null;
+  const s = window.__ay.nearSelect(lbl);
   if (!s) return false;
-  return window.__aySetSelect ? window.__aySetSelect(s, value) : false;
+  return window.__ay.setSelect(s, value);
 };
 window.__ayClickByText = async (txt) => {
   for (const el of document.querySelectorAll('button,a.btn')) {
     if (el.textContent.trim().includes(txt)) {
       el.scrollIntoView({behavior:'smooth', block:'center'});
-      await new Promise(r=>setTimeout(r,200));
+      await sleep(200);
+      el.dispatchEvent(new MouseEvent('mousedown',{bubbles:true}));
+      await sleep(80);
       el.click();
-      await new Promise(r=>setTimeout(r,600));
+      await sleep(600);
       return true;
     }
   }
   return false;
 };
+})();
 """
 
 

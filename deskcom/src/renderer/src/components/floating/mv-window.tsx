@@ -20,7 +20,18 @@ function MVWindow() {
     const el = videoRef.current;
     if (el && currentMV?.stream_url) {
       el.src = currentMV.stream_url;
-      el.play().catch(() => setPlayError(true));
+      const startTime = currentMV.start_time || 0;
+      el.addEventListener('loadedmetadata', () => {
+        if (startTime > 0) {
+          try {
+            el.currentTime = startTime;
+          } catch {
+            // ignore if the stream cannot seek
+          }
+        }
+        el.play().catch(() => setPlayError(true));
+      }, { once: true });
+      el.addEventListener('error', () => setPlayError(true), { once: true });
     }
   }, [currentMV]);
 

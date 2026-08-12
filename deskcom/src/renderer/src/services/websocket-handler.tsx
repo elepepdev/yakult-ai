@@ -23,6 +23,7 @@ import { useGroup } from '@/context/group-context';
 import { useInterrupt } from '@/hooks/utils/use-interrupt';
 import { useBrowser } from '@/context/browser-context';
 import { useAgentProviderConfig } from '@/context/agent-provider-config-context';
+import { useConfigSchema } from '@/context/config-schema-context';
 
 function WebSocketHandler({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
@@ -32,7 +33,7 @@ function WebSocketHandler({ children }: { children: React.ReactNode }) {
   const [aiMode] = useLocalStorage<string>('aiMode', 'full_agent');
   const { aiState, setAiState, backendSynthComplete, setBackendSynthComplete } = useAiState();
   const { modelInfo, setModelInfo } = useLive2DConfig();
-  const { setSubtitleText } = useSubtitle();
+  const { setSubtitleText, setSubconsciousText } = useSubtitle();
   const { clearResponse, setForceNewMessage, appendHumanMessage, appendOrUpdateToolCallMessage, appendYoutubeInvite } = useChatHistory();
   const { addAudioTask } = useAudioTask();
   const bgUrlContext = useBgUrl();
@@ -44,8 +45,11 @@ function WebSocketHandler({ children }: { children: React.ReactNode }) {
   const { interrupt } = useInterrupt();
   const { setBrowserViewData } = useBrowser();
   const { setAgentConfig, setAvailableModels } = useAgentProviderConfig();
+  const { setSchema } = useConfigSchema();
   const modelInfoRef = useRef(modelInfo);
   modelInfoRef.current = modelInfo;
+  const aiStateRef = useRef(aiState);
+  aiStateRef.current = aiState;
 
   useEffect(() => {
     autoStartMicOnConvEndRef.current = autoStartMicOnConvEnd;
@@ -74,6 +78,7 @@ function WebSocketHandler({ children }: { children: React.ReactNode }) {
         break;
       case 'conversation-chain-start':
         setAiState('thinking-speaking');
+        setSubconsciousText('');
         audioTaskQueue.clearQueue();
         clearResponse();
         break;
@@ -143,8 +148,16 @@ function WebSocketHandler({ children }: { children: React.ReactNode }) {
         setPendingModelInfo(message.model_info);
         setAiState('idle');
         break;
+      case 'clear-subconscious':
+        setSubconsciousText('');
+        break;
       case 'full-text':
-        if (message.text) {
+        if (message.subconscious && message.text) {
+          // Only show subconscious bubble when AI is strictly idle
+          if (aiStateRef.current === 'idle') {
+            setSubconsciousText(message.text);
+          }
+        } else if (message.text) {
           setSubtitleText(message.text);
         }
         break;
@@ -153,15 +166,31 @@ function WebSocketHandler({ children }: { children: React.ReactNode }) {
           setConfigFiles(message.configs);
         }
         break;
+      case 'config-schema':
+        if (message.schema) {
+          setSchema(message.schema);
+        }
+        break;
       case 'config-saved':
         if (message.agent_config) {
           setAgentConfig(message.agent_config);
         }
-        toaster.create({
-          title: message.message || t('notification.configSaved'),
-          type: 'success',
-          duration: 2000,
-        });
+        if (message.schema) {
+          setSchema(message.schema);
+        }
+        if (message.restart_required) {
+          toaster.create({
+            title: t('notification.restartRequired'),
+            type: 'warning',
+            duration: 6000,
+          });
+        } else {
+          toaster.create({
+            title: message.message || t('notification.configSaved'),
+            type: 'success',
+            duration: 2000,
+          });
+        }
         break;
       case 'available-models':
         if (Array.isArray(message.models)) {
@@ -183,6 +212,7 @@ function WebSocketHandler({ children }: { children: React.ReactNode }) {
 
         wsService.sendMessage({ type: 'fetch-history-list' });
         wsService.sendMessage({ type: 'create-new-history' });
+        wsService.sendMessage({ type: 'fetch-config-schema', lang: 'en' });
         break;
       case 'background-files':
         if (message.files) {
@@ -253,6 +283,7 @@ function WebSocketHandler({ children }: { children: React.ReactNode }) {
         break;
       case 'user-input-transcription':
         console.log('user-input-transcription: ', message.text);
+        setSubconsciousText('');
         if (message.text) {
           appendHumanMessage(message.text);
         }
@@ -358,7 +389,7 @@ function WebSocketHandler({ children }: { children: React.ReactNode }) {
       default:
         console.warn('Unknown message type:', message.type);
     }
-  }, [aiState, addAudioTask, appendHumanMessage, appendYoutubeInvite, baseUrl, bgUrlContext, setAiState, setConfName, setConfUid, setConfigFiles, setCurrentHistoryUid, setHistoryList, setMessages, setModelInfo, setSubtitleText, startMic, stopMic, setSelfUid, setGroupMembers, setIsOwner, backendSynthComplete, setBackendSynthComplete, clearResponse, handleControlMessage, appendOrUpdateToolCallMessage, interrupt, setBrowserViewData, t]);
+  }, [aiState, addAudioTask, appendHumanMessage, appendYoutubeInvite, baseUrl, bgUrlContext, setAiState, setConfName, setConfUid, setConfigFiles, setCurrentHistoryUid, setHistoryList, setMessages, setModelInfo, setSubtitleText, startMic, stopMic, setSelfUid, setGroupMembers, setIsOwner, setSubconsciousText, backendSynthComplete, setBackendSynthComplete, clearResponse, handleControlMessage, appendOrUpdateToolCallMessage, interrupt, setBrowserViewData, t]);
 
   useEffect(() => {
     wsService.connect(wsUrl);
@@ -377,6 +408,7 @@ function WebSocketHandler({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (wsState === 'OPEN') {
       wsService.sendMessage({ type: 'set-ai-mode', mode: aiMode });
+      wsService.sendMessage({ type: 'fetch-config-schema', lang: 'en' });
     }
   }, [wsState]);
 

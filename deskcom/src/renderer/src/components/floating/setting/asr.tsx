@@ -1,6 +1,7 @@
-import { Box, Field, Switch, Input } from '@chakra-ui/react';
+import { Box, Field, Switch, Input, Text } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
 import { useASRSettings } from '@/hooks/floating/setting/use-asr-settings';
+import SchemaForm from './schema-form';
 
 const fieldLabelStyles = {
   color: '#c0c0e0',
@@ -93,6 +94,13 @@ function ASR() {
           css={inputStyles}
         />
       </Field.Root>
+
+      <Box borderTop="1px solid" borderColor="var(--sk-outline)" />
+
+      <Text fontSize="xs" fontWeight="semibold" color="var(--sk-ink-soft)">
+        {t('settings.asr.backendConfig')}
+      </Text>
+      <SchemaForm rootPath="character_config.asr_config" />
     </Box>
   );
 }

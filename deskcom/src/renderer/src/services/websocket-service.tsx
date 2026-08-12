@@ -72,11 +72,16 @@ export interface MessageEvent {
   actions?: Actions;
   text?: string;
   title?: string;
+  subconscious?: boolean;
   stream_url?: string;
   request_id?: string;
   video_url?: string;
   is_recommended?: boolean;
   feedback?: string;
+  shuffle?: boolean;
+  playlist_id?: string;
+  song?: any;
+  results?: any[];
   model_info?: ModelInfo;
   model_type?: string;
   conf_name?: string;
@@ -118,6 +123,9 @@ export interface MessageEvent {
   models?: string[];
   provider?: string;
   data?: any; // Generic payload (e.g. memories list)
+  schema?: any;
+  restart_required?: boolean;
+  updates?: Record<string, any>;
 }
 
 // Get translation function for error messages

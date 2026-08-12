@@ -1,5 +1,5 @@
 /* eslint-disable no-param-reassign */
-import { memo, useRef, useEffect, useCallback, useState } from 'react';
+import { memo, useRef, useEffect, useCallback } from 'react';
 import { useLive2DConfig } from '@/context/live2d-config-context';
 import { useAiState, AiStateEnum } from '@/context/ai-state-context';
 import { useForceIgnoreMouse } from '@/hooks/utils/use-force-ignore-mouse';
@@ -49,12 +49,16 @@ export const OrbCanvas = memo(
       dragStartX: 0,
       dragStartY: 0,
       dragStartConfig: { x: 0.5, y: 0.55 },
+      headPos: null as { x: number; y: number } | null,
+      lastHeadAt: 0,
     });
 
     const scaleRef = useRef(orbConfig.scale);
     const scrollToResize = modelInfo?.scrollToResize !== false;
+    const orbConfigRef = useRef(orbConfig);
 
-    // Update scaleRef when config changes from persistence
+    // Keep refs in sync with persisted config (no effect restart on drag)
+    orbConfigRef.current = orbConfig;
     useEffect(() => {
       scaleRef.current = orbConfig.scale;
     }, [orbConfig.scale]);
@@ -141,9 +145,10 @@ export const OrbCanvas = memo(
         const h = window.innerHeight;
 
         // Center position from config (fraction of viewport) + drag offset
-        const config = orbConfig;
+        const config = orbConfigRef.current;
         const cx = config.x * w;
-        const cy = config.y * h;
+        const bobY = Math.sin(anim.time * 1.6) * h * 0.006;
+        const cy = config.y * h + bobY;
 
         ctx.clearRect(0, 0, w, h);
 
@@ -173,24 +178,42 @@ export const OrbCanvas = memo(
           blinkActive = false;
         }
 
-        // ----- Emot rendering (3-char eye/mouth/eye) -----
+        // ----- Emot rendering (3-char eye/mouth/eye, or verbatim if longer) -----
         const base = anim.emot || DEFAULT_EMOT;
-        let [lEye, mouth, rEye] = [base[0] ?? '-', base[1] ?? '_', base[2] ?? '-'];
-        if (blinkActive && !anim.talking) {
-          lEye = 'x';
-          rEye = 'x';
+        let emot: string;
+        if (base.length === 3) {
+          let [lEye, mouth, rEye] = [base[0] ?? '-', base[1] ?? '_', base[2] ?? '-'];
+          if (blinkActive && !anim.talking) {
+            lEye = '·';
+            rEye = '·';
+          }
+          if (anim.talking) {
+            const amp = Math.min(1, anim.lastVolume * 2.2);
+            mouth = TALKING_MOUTHS[Math.min(
+              TALKING_MOUTHS.length - 1,
+              Math.floor(amp * TALKING_MOUTHS.length),
+            )];
+          }
+          emot = `[${lEye}${mouth}${rEye}]`;
+        } else {
+          emot = `[${base}]`;
         }
-        if (anim.talking) {
-          const amp = Math.min(1, anim.lastVolume * 2.2);
-          mouth = TALKING_MOUTHS[Math.min(
-            TALKING_MOUTHS.length - 1,
-            Math.floor(amp * TALKING_MOUTHS.length),
-          )];
-        }
-        const emot = `[${lEye}${mouth}${rEye}]`;
 
         // ----- Orb radius -----
         const baseR = Math.min(w, h) * 0.09 * scaleRef.current;
+
+        // ----- Broadcast head anchor for the thought bubble (throttled) -----
+        const headX = cx;
+        const headY = cy - baseR;
+        const lastHead = anim.headPos;
+        if (
+          (!lastHead || Math.abs(lastHead.x - headX) > 1 || Math.abs(lastHead.y - headY) > 1) &&
+          now - anim.lastHeadAt > 60
+        ) {
+          anim.headPos = { x: headX, y: headY };
+          anim.lastHeadAt = now;
+          window.dispatchEvent(new CustomEvent('vrm-head-screen-position', { detail: { x: headX, y: headY } }));
+        }
 
         // ----- Soundwave ring (undulating circle) -----
         const ringPoints = 96;
@@ -263,18 +286,10 @@ export const OrbCanvas = memo(
 
         // ----- Emot text -----
         ctx.fillStyle = 'rgba(10, 30, 60, 0.85)';
-        ctx.font = `bold ${Math.round(r * 0.42)}px 'Courier New', monospace`;
+        ctx.font = `bold ${Math.round(baseR * 0.42)}px 'JetBrains Mono', 'SF Mono', 'Cascadia Mono', 'Consolas', 'DejaVu Sans Mono', monospace`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(emot, cx, cy);
-
-        // Small status dot while talking
-        if (anim.talking) {
-          ctx.fillStyle = 'rgba(255,255,255,0.9)';
-          ctx.beginPath();
-          ctx.arc(cx + r * 0.55, cy - r * 0.55, 3, 0, Math.PI * 2);
-          ctx.fill();
-        }
       };
       rafId = requestAnimationFrame(draw);
 
@@ -282,9 +297,7 @@ export const OrbCanvas = memo(
         cancelAnimationFrame(rafId);
         window.removeEventListener('resize', resizeCanvas);
       };
-      // orbConfig captured per frame is fine via ref-like closure for center;
-      // dragging writes via setOrbConfig (React state) — see pointer handlers.
-    }, [orbConfig]);
+    }, []);
 
     // ---- Pointer: drag to move, wheel to resize ----
     const handlePointerDown = useCallback((e: React.PointerEvent) => {
@@ -319,13 +332,22 @@ export const OrbCanvas = memo(
       animRef.current.dragging = false;
     }, []);
 
-    const handleWheel = useCallback((e: React.WheelEvent) => {
-      if (!scrollToResize) return;
-      e.preventDefault();
-      const dir = e.deltaY > 0 ? -0.05 : 0.05;
-      scaleRef.current = Math.min(2.5, Math.max(0.3, scaleRef.current + dir));
-      setOrbConfig({ ...orbConfig, scale: scaleRef.current });
-    }, [scrollToResize, orbConfig, setOrbConfig]);
+    // React's onWheel is passive (preventDefault is a no-op), so the browser's
+    // default Ctrl+wheel/pinch page zoom would still scale the whole page.
+    // Attach a native non-passive listener to actually block it.
+    useEffect(() => {
+      const container = containerRef.current;
+      if (!container) return undefined;
+      const onWheel = (e: WheelEvent) => {
+        if (!scrollToResize) return;
+        e.preventDefault();
+        const dir = e.deltaY > 0 ? -0.05 : 0.05;
+        scaleRef.current = Math.min(2.5, Math.max(0.3, scaleRef.current + dir));
+        setOrbConfig({ ...orbConfigRef.current, scale: scaleRef.current });
+      };
+      container.addEventListener('wheel', onWheel, { passive: false });
+      return () => container.removeEventListener('wheel', onWheel);
+    }, [scrollToResize, setOrbConfig]);
 
     // Hover passthrough
     useEffect(() => {
@@ -362,7 +384,6 @@ export const OrbCanvas = memo(
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
-        onWheel={handleWheel}
         onContextMenu={handleContextMenu}
       >
         <canvas

@@ -33,6 +33,13 @@ class Live2dModel:
         self.live2d_model_name: str = live2d_model_name
         self.set_model(live2d_model_name)
 
+    @property
+    def model_name(self) -> str:
+        return self.live2d_model_name
+
+    def to_frontend_payload(self) -> dict:
+        return {**self.model_info, "type": self.model_type}
+
     def set_model(self, model_name: str) -> None:
         """
         Set the model with its name and load the model information. This method will initialize the `self.model_info`, `self.emo_map`, and `self.emo_str` attributes.

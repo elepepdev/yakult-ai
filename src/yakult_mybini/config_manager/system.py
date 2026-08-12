@@ -19,6 +19,22 @@ class DesktopConfig(I18nMixin):
     }
 
 
+class FileAttachmentConfig(I18nMixin):
+    """File attachment limits."""
+
+    max_files: int = Field(5, alias="max_files")
+    max_file_size_mb: int = Field(15, alias="max_file_size_mb")
+    token_budget: int = Field(2000, alias="token_budget")
+    enable_ocr: bool = Field(True, alias="enable_ocr")
+
+    DESCRIPTIONS: ClassVar[Dict[str, Description]] = {
+        "max_files": Description(en="Maximum number of files per message", zh="每条消息最大文件数"),
+        "max_file_size_mb": Description(en="Maximum file size in MB", zh="最大文件大小（MB）"),
+        "token_budget": Description(en="Max tokens of extracted text per file", zh="每个文件提取文本的最大 token 数"),
+        "enable_ocr": Description(en="OCR scanned PDFs/images as text fallback", zh="对扫描 PDF/图片启用 OCR"),
+    }
+
+
 class SystemConfig(I18nMixin):
     """System configuration settings."""
 
@@ -31,6 +47,9 @@ class SystemConfig(I18nMixin):
     sudo_password: Optional[str] = Field(None, alias="sudo_password")
     desktop: Optional[DesktopConfig] = Field(None, alias="desktop")
     idle_life: Optional[IdleLifeConfig] = Field(None, alias="idle_life")
+    file_attachment: Optional[FileAttachmentConfig] = Field(
+        None, alias="file_attachment"
+    )
     ai_mode: Literal["lite", "minimal", "full_agent"] = Field(
         "full_agent", alias="ai_mode"
     )
@@ -57,6 +76,16 @@ class SystemConfig(I18nMixin):
         "ai_mode": Description(
             en="AI capability mode: 'lite' (chat only), 'minimal' (light tools), 'full_agent' (all tools)",
             zh="AI 能力模式：'lite'（仅聊天）、'minimal'（轻量工具）、'full_agent'（全部工具）",
+        ),
+        "desktop": Description(
+            en="Desktop engine configuration", zh="桌面引擎配置"
+        ),
+        "idle_life": Description(
+            en="Autonomous idle life system (random talk, subconscious thoughts, dreams, moods)",
+            zh="自主空闲生活系统（随机对话、潜意识想法、梦境、情绪）",
+        ),
+        "file_attachment": Description(
+            en="File attachment limits for messages", zh="消息文件附件限制"
         ),
     }
 

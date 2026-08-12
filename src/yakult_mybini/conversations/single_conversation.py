@@ -28,6 +28,7 @@ async def process_single_conversation(
     client_uid: str,
     user_input: Union[str, np.ndarray],
     images: Optional[List[Dict[str, Any]]] = None,
+    files: Optional[List[Dict[str, Any]]] = None,
     session_emoji: str = np.random.choice(EMOJI_LIST),
     metadata: Optional[Dict[str, Any]] = None,
 ) -> str:
@@ -65,6 +66,7 @@ async def process_single_conversation(
             images=images,
             from_name=context.character_config.human_name,
             metadata=metadata,
+            files=files,
         )
 
         # Store user message (check if we should skip storing to history)
@@ -103,6 +105,14 @@ async def process_single_conversation(
 
                 elif isinstance(output_item, dict) and output_item.get("type") == "youtube-invite":
                     logger.info(f"Youtube invite: {output_item}")
+                    await websocket_send(json.dumps(output_item))
+
+                elif isinstance(output_item, dict) and output_item.get("type") == "playlist-invite":
+                    logger.info(f"Playlist invite: {output_item}")
+                    await websocket_send(json.dumps(output_item))
+
+                elif isinstance(output_item, dict) and output_item.get("type") == "mv-invite":
+                    logger.info(f"MV invite: {output_item}")
                     await websocket_send(json.dumps(output_item))
 
                 elif isinstance(output_item, (SentenceOutput, AudioOutput)):

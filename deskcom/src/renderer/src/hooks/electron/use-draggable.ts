@@ -1,73 +1,119 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useStageLayout } from '@/context/stage-layout-context';
+import { calculateSnapPosition } from './use-smart-snap';
+
 interface Position {
-  x: number
-  y: number
+  x: number;
+  y: number;
 }
 
 interface UseDraggableProps {
-  componentId: string
+  componentId: string;
+  defaultPosition?: Position;
 }
 
-/**
- * A custom hook that provides dragging functionality for components
- * @param isPet - Whether the current mode is pet mode or not
- * @param componentId - Unique identifier for the component
- * @returns Object containing refs and handlers for dragging functionality
- */
-export function useDraggable({ componentId: _componentId }: UseDraggableProps) {
-  // Track if the element is currently being dragged
+export function useDraggable({ componentId, defaultPosition = { x: 20, y: 80 } }: UseDraggableProps) {
   const [isDragging, setIsDragging] = useState(false);
-
-  // Refs to store position data that persists between renders
-  const positionRef = useRef<Position>({ x: 0, y: 0 });
+  const positionRef = useRef<Position>(defaultPosition);
   const dragStartRef = useRef<Position>({ x: 0, y: 0 });
-  const elementRef = useRef<HTMLDivElement>(null);
+  const domRef = useRef<HTMLDivElement | null>(null);
 
-  /**
-   * Handles the start of dragging operation
-   * Sets up mouse move and mouse up listeners
-   */
+  const {
+    snapToGrid,
+    updateWindowPosition,
+    getWindowPosition,
+    registerWindowRect,
+    unregisterWindowRect,
+    getAllOtherWindowRects,
+  } = useStageLayout();
+
+  // Apply saved position whenever the element attaches. A plain effect is not
+  // enough: windows mount later than the provider, so at effect time the ref is
+  // null and the transform would never be applied, leaving positionRef stale.
+  const elementRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      domRef.current = el;
+      if (el) {
+        const savedPos = getWindowPosition(componentId);
+        if (savedPos) {
+          positionRef.current = savedPos;
+          el.style.transform = `translate(${savedPos.x}px, ${savedPos.y}px)`;
+        }
+      }
+    },
+    [componentId, getWindowPosition],
+  );
+
+  // Update rect registry when component renders / resizes
+  const updateRectRegistry = useCallback(() => {
+    const el = domRef.current;
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      registerWindowRect(componentId, {
+        x: positionRef.current.x,
+        y: positionRef.current.y,
+        width: rect.width,
+        height: rect.height,
+      });
+    }
+  }, [componentId, registerWindowRect]);
+
+  useEffect(() => {
+    updateRectRegistry();
+    return () => unregisterWindowRect(componentId);
+  }, [componentId, updateRectRegistry, unregisterWindowRect]);
+
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Don't start drag when clicking on input/textarea/button elements
     const target = e.target as HTMLElement;
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'BUTTON') return;
+    if (
+      target.tagName === 'INPUT'
+      || target.tagName === 'TEXTAREA'
+      || target.tagName === 'BUTTON'
+      || target.closest('button')
+      || target.closest('input')
+      || target.closest('textarea')
+    ) {
+      return;
+    }
 
     setIsDragging(true);
-    // Calculate the initial offset
     dragStartRef.current = {
       x: e.clientX - positionRef.current.x,
       y: e.clientY - positionRef.current.y,
     };
 
-    /**
-     * Updates element position during mouse movement
-     */
     const handleMouseMove = (moveEvent: MouseEvent) => {
-      if (!elementRef.current) return;
+      const el = domRef.current;
+      if (!el) return;
 
-      // Calculate new position
-      const newPosition = {
-        x: moveEvent.clientX - dragStartRef.current.x,
-        y: moveEvent.clientY - dragStartRef.current.y,
-      };
+      let rawX = moveEvent.clientX - dragStartRef.current.x;
+      let rawY = moveEvent.clientY - dragStartRef.current.y;
 
-      // Update position ref for future calculations
-      positionRef.current = newPosition;
+      if (snapToGrid) {
+        const rect = el.getBoundingClientRect();
+        const otherRects = getAllOtherWindowRects(componentId);
+        const snapped = calculateSnapPosition(
+          { x: rawX, y: rawY },
+          { width: rect.width, height: rect.height },
+          otherRects,
+        );
+        rawX = snapped.x;
+        rawY = snapped.y;
+      }
 
-      elementRef.current.style.transform = `translate(${positionRef.current.x}px, ${positionRef.current.y}px)`;
+      positionRef.current = { x: rawX, y: rawY };
+      el.style.transform = `translate(${rawX}px, ${rawY}px)`;
     };
 
-    /**
-     * Cleanup function for mouse events
-     */
     const handleMouseUp = () => {
       setIsDragging(false);
-      // Clean up event listeners
+      updateWindowPosition(componentId, positionRef.current);
+      updateRectRegistry();
+
       document.removeEventListener('mousemove', handleMouseMove, true);
       document.removeEventListener('mouseup', handleMouseUp, true);
     };
 
-    // Add event listeners with capture phase
     document.addEventListener('mousemove', handleMouseMove, true);
     document.addEventListener('mouseup', handleMouseUp, true);
   };

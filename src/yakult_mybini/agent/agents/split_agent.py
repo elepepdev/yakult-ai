@@ -56,7 +56,34 @@ class SplitAgent(AgentInterface):
             return
 
         # 1. Route intent to a tool group
+        route_tool_id = f"route_{int(time.time() * 1000)}"
+        yield SentenceOutput(
+            text="",
+            display=DisplayText(text="", name="", avatar=""),
+            extra_data={
+                "type": "tool_call_status",
+                "tool_id": route_tool_id,
+                "tool_name": "route_intent",
+                "status": "running",
+                "content": "Delegating user request to specialist...",
+                "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+            },
+        )
+
         group_name = await self._route_intent(user_text)
+
+        yield SentenceOutput(
+            text="",
+            display=DisplayText(text="", name="", avatar=""),
+            extra_data={
+                "type": "tool_call_status",
+                "tool_id": route_tool_id,
+                "tool_name": f"delegated_to_{group_name}",
+                "status": "completed" if group_name != "none" else "completed",
+                "content": f"Delegated to group: {group_name}",
+                "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+            },
+        )
 
         # 2. Get recent context from persona
         recent_context = self._persona.get_recent_context(n=2)
@@ -68,9 +95,32 @@ class SplitAgent(AgentInterface):
         # 3. Run tool agent for the selected group (or skip if 'none')
         tool_result = ToolResult()
         if group_name != "none" and group_name in self._tool_groups:
-            tool_result = await self._run_group_agent(
-                group_name, user_text, recent_context,
-            )
+            # Create a queue to stream status updates in real-time
+            status_queue = asyncio.Queue()
+
+            async def _on_status(status_dict: dict):
+                await status_queue.put(status_dict)
+
+            async def _run_task():
+                res = await self._run_group_agent(
+                    group_name, user_text, recent_context, on_status_update=_on_status
+                )
+                await status_queue.put(None)
+                return res
+
+            agent_task = asyncio.create_task(_run_task())
+
+            while True:
+                status_item = await status_queue.get()
+                if status_item is None:
+                    break
+                yield SentenceOutput(
+                    text="",
+                    display=DisplayText(text="", name="", avatar=""),
+                    extra_data=status_item,
+                )
+
+            tool_result = await agent_task
 
         # 4. Inject results into persona
         if tool_result.tool_was_called and tool_result.tool_results:
@@ -92,13 +142,6 @@ class SplitAgent(AgentInterface):
                 role="system",
                 skip_memory=True,
             )
-            for status in tool_result.tool_statuses:
-                if isinstance(status, dict):
-                    yield SentenceOutput(
-                        text="",
-                        display=DisplayText(text="", name="", avatar=""),
-                        extra_data=status,
-                    )
         elif tool_result.error:
             logger.warning(f"SplitAgent: tool error: {tool_result.error}")
             self._persona._add_message(
@@ -140,7 +183,7 @@ class SplitAgent(AgentInterface):
         group_name: str,
         user_text: str,
         recent_context: List[Dict[str, Any]],
-        on_status_update: Optional[Callable[[Dict[str, Any]], None]] = None,
+        on_status_update: Optional[Callable[[Dict[str, Any]], Any]] = None,
     ) -> ToolResult:
         """Run a ToolAgent for a specific tool group with minimal prompt."""
         group = self._tool_groups[group_name]

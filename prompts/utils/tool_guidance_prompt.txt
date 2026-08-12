@@ -1,4 +1,4 @@
-(Ingat: kamu tetap Yakult — pemalu, sedikit sarkastik, tsundere, respons pendek. Aturan di bawah ini cuma soal PROSES pakai tool, gaya bicaramu tidak berubah.)
+(Aturan di bawah ini cuma soal PROSES pakai tool, gaya bicaramu tidak berubah — ikuti persona-mu.)
 
 ## Aturan Proses Pakai Tool (INI SUMBER UTAMA — file lain cuma referensi nama tool)
 
@@ -57,3 +57,21 @@ User SUDAH mengizinkan eksplisit pemakaian tool keamanan/jaringan (nmap, netstat
 - `hotkey` untuk kombinasi tombol, `press_key` untuk tombol tunggal
 - `get_pkgbuild` WAJIB dicek sebelum `install_package` dengan `use_aur=True`
 - Klik di screen-share WAJIB sertakan `image_width` dan `image_height` (dan pakai `grid_cell`, bukan x,y mentah)
+
+## Alur Isi Formulir Web / Amal Yaumi (browser-use)
+
+Kamu punya browser otomatis (Chromium, muncul di layar user) untuk mengisi formulir web — terutama Amal Yaumi di SIS Al Uswah (app.sisal.uswah.sch.id).
+
+1. Buka situs dulu: `browser_navigate("https://app.sisal.uswah.sch.id")` — kalau belum login, browser muncul & minta user login manual (sekali saja, login tersimpan).
+2. Untuk mengisi formulir, cek dulu struktur halaman dengan `browser_snapshot()` — ini mengembalikan label + jenis field + opsi dropdown.
+3. Isi field: `browser_fill_by_label(label, value)` untuk input teks/angka, `browser_select_by_label(label, value)` untuk dropdown (Ya/Tidak dll).
+4. Klik tombol: `browser_click_by_text("Tampilkan Data")`, `browser_click_by_text("Simpan")`.
+5. Simpan jawaban user dengan `browser_save_form_data(name, data)` biar pekan berikutnya tinggal panggil `browser_load_form_data(name)` dan hanya tanya yang berubah.
+
+**Amal Yaumi (jangan dipakai manual pakai step 2-4, LANGSUNG pakai macro):**
+- Kalau user minta "isiin amal yaumi", pakai `amal_yaumi_fill(mode, entries)`.
+- `mode`: `"ramadhan"` atau `"biasa"`.
+- `entries`: list berisi `{pekanName: "Pekan 1 Januari 2026", data: {sholat: {subuh: {hari, berjamaah, masjid, awalWaktu}, dzuhur: {...}, ashar: {...}, maghrib: {...}, isya: {...}}, extras: {puasaRamadhan (atau puasaSunnah/qiyamulLail kalau biasa), dhuha, matsurat, infaq, jamTidur, rawatib (total), tilawah (total)}}}`.
+- Nilai `hari/berjamaah/masjid/awalWaktu` = jumlah hari dari 7 yang melakukannya. `rawatib`/`tilawah` = total pekan (dibagi rata otomatis per hari).
+- Tanya user dulu data apa yang mau dipakai, atau ambil dari `browser_load_form_data`. Browser berjalan visible (headed) supaya user bisa lihat.
+- Verifikasi hasil: sesudah macro selesai, `browser_snapshot()` atau tanya user. JANGAN klaim berhasil kalau macro report `success: false`.

@@ -5,7 +5,7 @@ from fastapi import WebSocket
 
 from prompts import prompt_loader
 from .live2d_model import Live2dModel
-from .character_model import VRMModel
+from .character_model import VRMModel, OrbModel
 from .asr.asr_interface import ASRInterface
 from .tts.tts_interface import TTSInterface
 from .vad.vad_interface import VADInterface
@@ -56,6 +56,7 @@ class ServiceContext:
 
         self.live2d_model: Live2dModel = None
         self.vrm_model: VRMModel | None = None
+        self.orb_model: OrbModel | None = None
         self.asr_engine: ASRInterface = None
         self.tts_engine: TTSInterface = None
         self.agent_engine: AgentInterface = None
@@ -82,14 +83,17 @@ class ServiceContext:
 
         self.client_uid: str = None
 
+        # The config file this context was loaded from (used when saving config).
+        self.active_config_file: str = "conf.yaml"
+
         self.screen_monitor: ScreenMonitor = ScreenMonitor()
         self.idle_life_manager: IdleLifeManager | None = None
         self.last_proactive_response: str = ""
 
     @property
-    def model(self) -> Live2dModel | VRMModel | None:
-        """Return the active character model (Live2D or VRM)."""
-        return self.vrm_model or self.live2d_model
+    def model(self) -> Live2dModel | VRMModel | OrbModel | None:
+        """Return the active character model (Live2D, VRM, or Orb)."""
+        return self.orb_model or self.vrm_model or self.live2d_model
 
     def __str__(self):
         return (
@@ -254,6 +258,7 @@ class ServiceContext:
         agent_engine: AgentInterface,
         translate_engine: TranslateInterface | None,
         vrm_model: VRMModel | None = None,
+        orb_model: OrbModel | None = None,
         mcp_server_registery: ServerRegistry | None = None,
         tool_adapter: ToolAdapter | None = None,
         client_uid: str = None,
@@ -272,6 +277,7 @@ class ServiceContext:
         self.character_config = character_config
         self.live2d_model = live2d_model
         self.vrm_model = vrm_model
+        self.orb_model = orb_model
         self.asr_engine = asr_engine
         self.tts_engine = tts_engine
         self.vad_engine = vad_engine
@@ -498,7 +504,7 @@ class ServiceContext:
             provider_config = llm_configs.get(provider, {})
             if provider_config:
                 provider_config.pop("interrupt_method", None)
-                provider_config["max_tokens"] = 128
+                provider_config["max_tokens"] = 512
                 logger.info(f"Creating subconscious LLM: {provider}")
                 return StatelessLLMFactory.create_llm(
                     llm_provider=provider,
@@ -518,11 +524,13 @@ class ServiceContext:
             and agent_config == self.character_config.agent_config
             and persona_prompt == self.character_config.persona_prompt
             and getattr(self, '_last_init_mode', None) == current_mode
+            and getattr(self, '_last_init_model', None) is self.model
         ):
             logger.debug("Agent already initialized with the same config and mode.")
             return
 
         self._last_init_mode = current_mode
+        self._last_init_model = self.model
         mode = current_mode
         is_split = self._is_split_agent_mode()
 
@@ -773,6 +781,16 @@ class ServiceContext:
                     prompt_content = prompt_content.replace(
                         "[<insert_emomap_keys>]", active_model.emo_str
                     )
+                    orb_instruction = (
+                        "Karena kamu adalah karakter orb, tampilkan emoji ASCII "
+                        "seperti [^_^], [-_-], [T_T] dari daftar keyword di bawah "
+                        "sebagai ekspresi wajahmu, bukan kata-kata seperti [joy]."
+                        if active_model.model_type == "orb"
+                        else ""
+                    )
+                    prompt_content = prompt_content.replace(
+                        "[<insert_orb_instruction>]", orb_instruction
+                    )
 
             if prompt_name == "mcp_prompt":
                 continue
@@ -792,6 +810,20 @@ class ServiceContext:
                 "user TIDAK bisa melihat grid tersebut.]"
             )
             persona_prompt += grid_note
+
+        # Hard anti-confabulation rule, appended LAST so it carries maximum
+        # weight. The model tends to claim "sudah aku jelaskan tadi" even when
+        # it only just explained something — treat that as a lie it must not tell.
+        persona_prompt += (
+            "\n\n[SYSTEM: ATURAN WAJIB TERAKHIR — ANTI HALUSINASI PERCAKAPAN]\n"
+            "JANGAN PERNAH berkata 'sudah aku jelaskan tadi', 'sudah aku bilang tadi', "
+            "'seperti yang barusan kukatakan', atau klaim apa pun bahwa kamu telah "
+            "menyampaikan sesuatu di pesan sebelumnya, KECUALI kamu benar-benar melihat "
+            "pesan itu di riwayat percakapan di atas (pesan yang TERTULIS sebelum pesan user ini).\n"
+            "Kalau kamu baru menjelaskan sesuatu SEKARANG di respons ini, jangan tambahkan "
+            "'sudah kubilang tadi' — itu bohong. Ulangi penjelasannya atau langsung jawab.\n"
+            "Klaim palsu tentang apa yang pernah kamu katakan = halusinasi. JANGAN lakukan.]"
+        )
 
         return persona_prompt
 
@@ -872,6 +904,8 @@ class ServiceContext:
         try:
             new_character_config_data = None
 
+            self.active_config_file = config_file_name
+
             if config_file_name == "conf.yaml":
                 # Load base config
                 new_character_config_data = read_yaml("conf.yaml").get(
@@ -887,6 +921,11 @@ class ServiceContext:
                     raise ValueError("Invalid configuration file path")
 
                 alt_config_data = read_yaml(file_path).get("character_config")
+
+                # Persona cards are identity-only: personality always comes from
+                # conf.yaml, never from the character card.
+                if alt_config_data and "persona_prompt" in alt_config_data:
+                    del alt_config_data["persona_prompt"]
 
                 # Start with original config data and perform a deep merge
                 new_character_config_data = deep_merge(

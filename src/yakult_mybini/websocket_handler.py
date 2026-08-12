@@ -2,7 +2,9 @@ from typing import Dict, List, Optional, Callable, TypedDict
 from fastapi import WebSocket, WebSocketDisconnect
 import asyncio
 import json
+import os
 import re
+import yaml
 from enum import Enum
 import numpy as np
 import httpx
@@ -29,13 +31,17 @@ from .config_manager.utils import (
     read_yaml,
     _auto_discover_vrm_models,
     save_config,
+    validate_config,
 )
+from .config_manager.schema import build_config_schema, apply_updates, SECRET_MASK
 from .conversations.conversation_handler import (
     handle_conversation_trigger,
     handle_group_interrupt,
     handle_individual_interrupt,
 )
 from .mcpp.music_player_manager import music_player_manager
+from .memory.playlist_manager import playlist_manager
+from .agentic.downloader import download_audio, download_video, DOWNLOAD_DIR, VIDEO_DIR, to_http_url
 from .conversations.single_conversation import process_single_conversation
 from .character_model import build_emotion_map_from_vrm_expressions
 
@@ -64,6 +70,7 @@ class WSMessage(TypedDict, total=False):
     text: Optional[str]
     audio: Optional[List[float]]
     images: Optional[List[str]]
+    files: Optional[List[dict]]
     history_uid: Optional[str]
     file: Optional[str]
     display_text: Optional[dict]
@@ -107,9 +114,13 @@ class WebSocketHandler:
             "audio-play-start": self._handle_audio_play_start,
             "request-init-config": self._handle_init_config_request,
             "save-config": self._handle_save_config,
+            "save-config-fields": self._handle_save_config_fields,
+            "fetch-config-schema": self._handle_fetch_config_schema,
             "fetch-available-models": self._handle_fetch_available_models,
+            "fetch-available-voices": self._handle_fetch_available_voices,
             "set-grid-spec": self._handle_set_grid_spec,
             "heartbeat": self._handle_heartbeat,
+            "user-active": self._handle_user_active,
             "fetch-memories": self._handle_fetch_memories,
             "delete-memory": self._handle_delete_memory,
             "update-memory": self._handle_update_memory,
@@ -118,6 +129,17 @@ class WebSocketHandler:
             "music-stop": self._handle_music_stop,
             "music-play-pause": self._handle_music_play_pause,
             "music-feedback": self._handle_music_feedback,
+            "fetch-playlists": self._handle_fetch_playlists,
+            "create-playlist": self._handle_create_playlist,
+            "delete-playlist": self._handle_delete_playlist,
+            "rename-playlist": self._handle_rename_playlist,
+            "add-song": self._handle_add_song,
+            "remove-song": self._handle_remove_song,
+            "reorder-song": self._handle_reorder_song,
+            "search-youtube": self._handle_search_youtube,
+            "download-song": self._handle_download_song,
+            "playlist-play": self._handle_playlist_play,
+            "play-mv": self._handle_play_mv,
             "fetch-todos": self._handle_fetch_todos,
             "add-todo": self._handle_add_todo,
             "delete-todo": self._handle_delete_todo,
@@ -245,6 +267,7 @@ class WebSocketHandler:
             ),
             live2d_model=self.default_context_cache.live2d_model,
             vrm_model=self.default_context_cache.vrm_model,
+            orb_model=self.default_context_cache.orb_model,
             asr_engine=self.default_context_cache.asr_engine,
             tts_engine=self.default_context_cache.tts_engine,
             vad_engine=self.default_context_cache.vad_engine,
@@ -705,10 +728,39 @@ class WebSocketHandler:
             "available_models": [],
         }
 
+    @staticmethod
+    def _write_active_config(context, new_config, target_file: str) -> None:
+        """Persist a config object to the active config file.
+
+        conf.yaml holds the full config (system + character). Character alt
+        files hold only ``character_config``, so dump just that section for
+        them. Mirrors the logic used by the schema-based settings GUI.
+        """
+        if target_file == "conf.yaml":
+            save_config(new_config, target_file)
+        else:
+            char_path = os.path.normpath(
+                os.path.join(
+                    context.system_config.config_alts_dir, target_file
+                )
+            )
+            if not char_path.startswith(context.system_config.config_alts_dir):
+                raise ValueError("Invalid configuration file path")
+            with open(char_path, "w", encoding="utf-8") as f:
+                yaml.dump(
+                    {
+                        "character_config": new_config.character_config.model_dump(
+                            by_alias=True, exclude_none=True
+                        )
+                    },
+                    f,
+                    allow_unicode=True,
+                )
+
     async def _handle_save_config(
         self, websocket: WebSocket, client_uid: str, data: dict
     ) -> None:
-        """Handle saving agent configuration (provider/model) to conf.yaml."""
+        """Handle saving agent configuration (provider/model) to the active config file."""
         context = self.client_contexts.get(client_uid)
         if not context:
             context = self.default_context_cache
@@ -733,7 +785,8 @@ class WebSocketHandler:
                     elif hasattr(provider_config, "model_path"):
                         provider_config.model_path = new_model
 
-            save_config(context.config, "conf.yaml")
+            target_file = getattr(context, "active_config_file", "conf.yaml")
+            self._write_active_config(context, context.config, target_file)
 
             # force=True because the config is mutated in place above — without it,
             # init_agent's "same config" guard sees identical (same) objects and
@@ -765,6 +818,161 @@ class WebSocketHandler:
                     }
                 )
             )
+
+    async def _handle_fetch_config_schema(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        """Send the full config schema + current values for the settings GUI."""
+        context = self.client_contexts.get(client_uid)
+        if not context:
+            context = self.default_context_cache
+
+        lang = data.get("lang", "en")
+        try:
+            schema = build_config_schema(context.config, lang)
+            await websocket.send_text(
+                json.dumps({"type": "config-schema", "schema": schema})
+            )
+        except Exception as e:
+            logger.error(f"Error building config schema: {e}")
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "error",
+                        "message": f"Error building config schema: {str(e)}",
+                    }
+                )
+            )
+
+    async def _handle_save_config_fields(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        """Save dot-path config field updates and re-init affected engines."""
+        context = self.client_contexts.get(client_uid)
+        if not context:
+            context = self.default_context_cache
+
+        updates = data.get("updates", {})
+        if not isinstance(updates, dict) or not updates:
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "error",
+                        "message": "No config updates provided",
+                    }
+                )
+            )
+            return
+
+        old_config = context.config.model_dump(by_alias=True)
+        try:
+            new_config = apply_updates(context.config, updates)
+            validate_config(new_config.model_dump(by_alias=True))
+        except Exception as e:
+            logger.error(f"Invalid config update: {e}")
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "error",
+                        "message": f"Invalid configuration: {str(e)}",
+                    }
+                )
+            )
+            return
+
+        # Save to the active config file. Character alt files hold only
+        # character_config, so dump just that section for them. system_config
+        # changes always persist to conf.yaml (it's base-level), so they are
+        # not lost when an alt character is active.
+        target_file = getattr(context, "active_config_file", "conf.yaml")
+        try:
+            if target_file == "conf.yaml":
+                self._write_active_config(context, new_config, target_file)
+            else:
+                # character_config -> active alt file
+                self._write_active_config(context, new_config, target_file)
+                # system_config -> base conf.yaml (keep its character_config intact)
+                base = read_yaml("conf.yaml")
+                base["system_config"] = new_config.system_config.model_dump(
+                    by_alias=True, exclude_none=True
+                )
+                save_config(validate_config(base), "conf.yaml")
+        except Exception as e:
+            logger.error(f"Error saving config: {e}")
+            await websocket.send_text(
+                json.dumps(
+                    {"type": "error", "message": f"Error saving configuration: {str(e)}"}
+                )
+            )
+            return
+
+        new_data = new_config.model_dump(by_alias=True)
+
+        # Determine which sections changed to re-init only what's needed.
+        def section_changed(key: str) -> bool:
+            return new_data.get(key) != old_config.get(key)
+
+        restart_required = False
+        try:
+            # system_config host/port/sudo changes need a restart
+            if new_data.get("system_config") != old_config.get("system_config"):
+                restart_required = True
+
+            # Commit the new config first so re-init reads fresh values
+            # (avatar, tts_preprocessor, etc.).
+            context.config = new_config
+            context.system_config = new_config.system_config
+            context.character_config = new_config.character_config
+
+            if section_changed("character_config"):
+                char_changed = new_data["character_config"]
+                old_char = old_config["character_config"]
+                # agent / persona
+                if char_changed.get("agent_config") != old_char.get(
+                    "agent_config"
+                ) or char_changed.get("persona_prompt") != old_char.get("persona_prompt"):
+                    await context.init_agent(
+                        new_config.character_config.agent_config,
+                        new_config.character_config.persona_prompt,
+                        force=True,
+                    )
+                # asr
+                if char_changed.get("asr_config") != old_char.get("asr_config"):
+                    context.asr_engine = None
+                    context.init_asr(new_config.character_config.asr_config)
+                # tts
+                if char_changed.get("tts_config") != old_char.get("tts_config"):
+                    context.tts_engine = None
+                    context.init_tts(new_config.character_config.tts_config)
+                # vad
+                if char_changed.get("vad_config") != old_char.get("vad_config"):
+                    context.vad_engine = None
+                    context.init_vad(new_config.character_config.vad_config)
+                # model
+                if (
+                    char_changed.get("live2d_model_name")
+                    != old_char.get("live2d_model_name")
+                    or char_changed.get("model_type") != old_char.get("model_type")
+                ):
+                    context.init_model(
+                        new_config.character_config.live2d_model_name,
+                        new_config.character_config.model_type,
+                    )
+        except Exception as e:
+            logger.error(f"Error re-initializing engines: {e}")
+
+        response = {
+            "type": "config-saved",
+            "message": "Configuration saved successfully",
+            "agent_config": self._build_agent_config_data(context),
+            "restart_required": restart_required,
+        }
+        # refresh schema so the GUI reflects masked secrets / new values
+        try:
+            response["schema"] = build_config_schema(context.config, data.get("lang", "en"))
+        except Exception:
+            pass
+        await websocket.send_text(json.dumps(response))
 
     async def _handle_fetch_available_models(
         self, websocket: WebSocket, client_uid: str, data: dict
@@ -822,6 +1030,113 @@ class WebSocketHandler:
             await websocket.send_text(
                 json.dumps({"type": "available-models", "models": [], "provider": provider_name})
             )
+
+    async def _handle_fetch_available_voices(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        """Fetch available voices for the current TTS provider."""
+        context = self.client_contexts.get(client_uid)
+        if not context:
+            context = self.default_context_cache
+
+        provider = data.get("provider")
+        if not provider:
+            provider = context.character_config.tts_config.tts_model
+
+        voices: List[str] = []
+
+        try:
+            if provider == "edge_tts":
+                import edge_tts
+
+                raw = await edge_tts.list_voices()
+                voices = sorted(v["ShortName"] for v in raw)
+            elif provider == "openai_tts":
+                # Standard OpenAI voices; compatible servers may expose more.
+                voices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+            elif provider == "melo_tts":
+                voices = ["EN-Default", "EN", "ZH", "JA", "ES", "FR", "KO", "YUE"]
+            elif provider == "elevenlabs_tts":
+                cfg = context.character_config.tts_config.elevenlabs_tts
+                if cfg and cfg.api_key:
+                    async with httpx.AsyncClient(timeout=10.0) as client:
+                        resp = await client.get(
+                            "https://api.elevenlabs.io/v1/voices",
+                            headers={"xi-api-key": cfg.api_key},
+                        )
+                        resp.raise_for_status()
+                        voices = sorted(v["name"] for v in resp.json().get("voices", []))
+            elif provider == "cartesia_tts":
+                cfg = context.character_config.tts_config.cartesia_tts
+                if cfg and cfg.api_key:
+                    async with httpx.AsyncClient(timeout=10.0) as client:
+                        resp = await client.get(
+                            "https://api.cartesia.ai/voices",
+                            headers={"X-API-Key": cfg.api_key},
+                        )
+                        resp.raise_for_status()
+                        data = resp.json()
+                        items = data.get("voices", []) if isinstance(data, dict) else data
+                        voices = sorted(
+                            v.get("id") or v.get("name") for v in items if v
+                        )
+            elif provider == "minimax_tts":
+                cfg = context.character_config.tts_config.minimax_tts
+                if cfg and cfg.api_key and cfg.group_id:
+                    async with httpx.AsyncClient(timeout=10.0) as client:
+                        resp = await client.get(
+                            f"https://api.minimax.chat/v1/t2a_v2/voice_list?GroupId={cfg.group_id}",
+                            headers={"Authorization": f"Bearer {cfg.api_key}"},
+                        )
+                        resp.raise_for_status()
+                        vlist = resp.json().get("data", {}).get("voice_list", [])
+                        voices = sorted(v.get("voice_id") for v in vlist if v)
+            elif provider == "siliconflow_tts":
+                cfg = context.character_config.tts_config.siliconflow_tts
+                if cfg and cfg.api_key:
+                    async with httpx.AsyncClient(timeout=10.0) as client:
+                        resp = await client.get(
+                            "https://api.siliconflow.cn/v1/audio/voices",
+                            headers={"Authorization": f"Bearer {cfg.api_key}"},
+                        )
+                        if resp.status_code == 200:
+                            vlist = resp.json().get("data", [])
+                            voices = sorted(v.get("voice_id") for v in vlist if v)
+        except Exception as e:
+            logger.warning(f"Failed to fetch voices for '{provider}': {e}")
+
+        # Config field that holds the selected voice, per provider.
+        voice_fields = {
+            "azure_tts": "voice",
+            "bark_tts": "voice",
+            "edge_tts": "voice",
+            "melo_tts": "speaker",
+            "coqui_tts": "speaker_wav",
+            "x_tts": "speaker_wav",
+            "gpt_sovits_tts": "ref_audio_path",
+            "fish_api_tts": "reference_id",
+            "sherpa_onnx_tts": "vits_model",
+            "siliconflow_tts": "default_voice",
+            "openai_tts": "voice",
+            "spark_tts": "prompt_wav_upload",
+            "minimax_tts": "voice_id",
+            "elevenlabs_tts": "voice_id",
+            "cartesia_tts": "voice_id",
+            "piper_tts": "model_path",
+            "cosyvoice_tts": "sft_dropdown",
+            "cosyvoice2_tts": "sft_dropdown",
+        }
+
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "type": "available-voices",
+                    "provider": provider,
+                    "voices": voices,
+                    "field": voice_fields.get(provider, "voice"),
+                }
+            )
+        )
 
     async def _handle_discover_vrm_expressions(
         self, websocket: WebSocket, client_uid: str, data: WSMessage
@@ -894,6 +1209,14 @@ class WebSocketHandler:
         except Exception as e:
             logger.error(f"Error sending heartbeat acknowledgment: {e}")
 
+    async def _handle_user_active(
+        self, websocket: WebSocket, client_uid: str, data: WSMessage
+    ) -> None:
+        """Reset idle timer on real user activity (mouse/key input)."""
+        context = self.client_contexts.get(client_uid)
+        if context and context.idle_life_manager:
+            context.idle_life_manager.mark_active()
+
     async def _handle_set_grid_spec(
         self, websocket: WebSocket, client_uid: str, data: dict
     ) -> None:
@@ -931,6 +1254,13 @@ class WebSocketHandler:
             return
         try:
             context.set_ai_mode(mode)
+            # Persist so the mode survives a reload (a fresh client context
+            # otherwise reads system_config.ai_mode back from the config file).
+            # ai_mode lives in system_config, which is base-level (conf.yaml)
+            # regardless of which character alt config is active.
+            if hasattr(context.config, "system_config"):
+                context.config.system_config.ai_mode = mode
+                save_config(context.config, "conf.yaml")
             await context.reinit_agent_for_mode()
             await websocket.send_text(json.dumps({
                 "type": "ai-mode-updated",
@@ -1059,6 +1389,320 @@ class WebSocketHandler:
         await websocket.send_text(
             json.dumps({"type": "update-todo-result", "success": item is not None})
         )
+
+    async def _handle_fetch_playlists(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        items = playlist_manager.list()
+        await websocket.send_text(
+            json.dumps(
+                {"type": "playlists", "data": [p.to_dict() for p in items]}
+            )
+        )
+
+    async def _handle_create_playlist(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        name = data.get("name", "")
+        playlist = playlist_manager.create(name)
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "type": "create-playlist-result",
+                    "success": playlist is not None,
+                    "playlist": playlist.to_dict() if playlist else None,
+                }
+            )
+        )
+
+    async def _handle_delete_playlist(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        playlist_id = data.get("id")
+        ok = playlist_manager.delete(playlist_id) if playlist_id else False
+        await websocket.send_text(
+            json.dumps({"type": "delete-playlist-result", "success": ok})
+        )
+
+    async def _handle_rename_playlist(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        playlist_id = data.get("id")
+        name = data.get("name", "")
+        playlist = (
+            playlist_manager.rename(playlist_id, name) if playlist_id else None
+        )
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "type": "rename-playlist-result",
+                    "success": playlist is not None,
+                    "playlist": playlist.to_dict() if playlist else None,
+                }
+            )
+        )
+
+    async def _handle_add_song(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        playlist_id = data.get("playlist_id")
+        song = data.get("song", {})
+        if not playlist_id or not song.get("video_url"):
+            return
+        from .memory.playlist_manager import PlaylistSong
+
+        item = playlist_manager.add_song(
+            playlist_id,
+            PlaylistSong(
+                title=song.get("title", ""),
+                video_url=song["video_url"],
+                duration=song.get("duration", 0),
+                thumbnail=song.get("thumbnail", ""),
+                file_path=song.get("file_path", ""),
+            ),
+        )
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "type": "add-song-result",
+                    "success": item is not None,
+                    "song": item.to_dict() if item else None,
+                }
+            )
+        )
+
+    async def _handle_remove_song(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        playlist_id = data.get("playlist_id")
+        song_id = data.get("song_id")
+        ok = (
+            playlist_manager.remove_song(playlist_id, song_id)
+            if playlist_id and song_id
+            else False
+        )
+        await websocket.send_text(
+            json.dumps({"type": "remove-song-result", "success": ok})
+        )
+
+    async def _handle_reorder_song(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        playlist_id = data.get("playlist_id")
+        song_id = data.get("song_id")
+        new_index = data.get("new_index", 0)
+        try:
+            new_index = int(new_index)
+        except (TypeError, ValueError):
+            new_index = 0
+        ok = (
+            playlist_manager.reorder_song(playlist_id, song_id, new_index)
+            if playlist_id and song_id
+            else False
+        )
+        await websocket.send_text(
+            json.dumps({"type": "reorder-song-result", "success": ok})
+        )
+
+    async def _handle_search_youtube(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        query = data.get("query", "")
+        max_results = int(data.get("max_results", 8))
+        if not query:
+            return
+        try:
+            import yt_dlp
+
+            ydl_opts = {
+                "quiet": True,
+                "no_warnings": True,
+                "extract_flat": "in_playlist",
+                "force_generic_extractor": False,
+            }
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(
+                    f"ytsearch{max_results}:{query}", download=False
+                )
+            results = []
+            for entry in info.get("entries", []):
+                results.append(
+                    {
+                        "title": entry.get("title", ""),
+                        "video_url": f"https://youtube.com/watch?v={entry.get('id', '')}",
+                        "duration": entry.get("duration", 0),
+                        "thumbnail": entry.get("thumbnail", ""),
+                    }
+                )
+            await websocket.send_text(
+                json.dumps({"type": "youtube-search-results", "results": results})
+            )
+        except Exception as e:
+            logger.error(f"Search YouTube error: {e}")
+            await websocket.send_text(
+                json.dumps(
+                    {"type": "youtube-search-results", "results": [], "error": str(e)}
+                )
+            )
+
+    async def _handle_download_song(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        video_url = data.get("video_url", "")
+        title = data.get("title", "")
+        playlist_id = data.get("playlist_id", "")
+        as_video = bool(data.get("video", False))
+        if not video_url:
+            return
+        try:
+            if as_video:
+                file_path = await asyncio.to_thread(
+                    download_video, video_url, title
+                )
+            else:
+                file_path = await asyncio.to_thread(
+                    download_audio, video_url, title
+                )
+            from .memory.playlist_manager import PlaylistSong
+
+            song = None
+            if playlist_id:
+                song = playlist_manager.add_song(
+                    playlist_id,
+                    PlaylistSong(
+                        title=title,
+                        video_url=video_url,
+                        file_path=file_path,
+                    ),
+                )
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "download-song-result",
+                        "success": True,
+                        "file_path": file_path,
+                        "song": song.to_dict() if song else None,
+                        "video": as_video,
+                    }
+                )
+            )
+        except Exception as e:
+            logger.error(f"Download song error: {e}")
+            await websocket.send_text(
+                json.dumps({"type": "download-song-result", "success": False})
+            )
+
+    async def _handle_playlist_play(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        playlist = playlist_manager.get(data.get("playlist_id", ""))
+        if not playlist or not playlist.songs:
+            await websocket.send_text(
+                json.dumps({"type": "playlist-error", "message": "Playlist kosong atau tidak ditemukan"})
+            )
+            return
+        shuffle = bool(data.get("shuffle", False))
+        start_index = data.get("start_index", 0)
+        try:
+            start_index = int(start_index)
+        except (TypeError, ValueError):
+            start_index = 0
+        start_index = max(0, min(start_index, len(playlist.songs) - 1))
+
+        music_player_manager.set_queue(
+            [s.to_dict() for s in playlist.songs], shuffle=shuffle
+        )
+        first = music_player_manager.next_queued()
+        if not first:
+            first = playlist.songs[0].to_dict()
+
+        stream_url = await self._resolve_song_stream(first)
+        if not stream_url:
+            await websocket.send_text(
+                json.dumps({"type": "playlist-error", "message": "Gagal memuat lagu pertama"})
+            )
+            return
+
+        music_player_manager.play_song(first, is_recommended=False)
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "type": "playlist-invite",
+                    "playlist_id": playlist.id,
+                    "title": first.get("title", "Unknown"),
+                    "stream_url": stream_url,
+                    "video_url": first.get("video_url", ""),
+                    "shuffle": shuffle,
+                }
+            )
+        )
+
+    async def _handle_play_mv(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        """Resolve a YouTube video stream URL and invite the client to open an MV window."""
+        video_url = data.get("video_url", "")
+        title = data.get("title", "")
+        start_time = data.get("start_time", 0)
+        if not video_url:
+            return
+        try:
+            import yt_dlp
+
+            ydl_opts = {
+                "quiet": True,
+                "no_warnings": True,
+                "format": "best[ext=mp4]/best",
+            }
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(video_url, download=False)
+            stream_url = info.get("url", "")
+            if not stream_url:
+                await websocket.send_text(
+                    json.dumps({"type": "mv-error", "message": "Gagal memuat video"})
+                )
+                return
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "mv-invite",
+                        "stream_url": stream_url,
+                        "title": title or info.get("title", "Unknown"),
+                        "video_url": video_url,
+                        "start_time": start_time,
+                    }
+                )
+            )
+        except Exception as e:
+            logger.error(f"Play MV error: {e}")
+            await websocket.send_text(
+                json.dumps({"type": "mv-error", "message": f"Gagal memuat video: {e}"})
+            )
+
+    async def _resolve_song_stream(self, song: dict) -> Optional[str]:
+        stream_url = music_player_manager.resolve_stream_url(song)
+        if stream_url:
+            return self._to_http_url(stream_url)
+        if song.get("video_url"):
+            fresh = await music_player_manager.refresh_stream_url(song["video_url"])
+            if fresh:
+                return fresh
+        return None
+
+    def _base_url(self) -> str:
+        host = "127.0.0.1"
+        port = "12393"
+        for ctx in self.client_contexts.values():
+            sc = getattr(ctx, "system_config", None)
+            if sc:
+                host = sc.host or host
+                port = str(sc.port or port)
+                break
+        return f"http://{host}:{port}"
+
+    def _to_http_url(self, path: str) -> str:
+        """Convert a local downloaded file path into an absolute served URL."""
+        return to_http_url(path, self._base_url())
 
     async def _reminder_check_loop(self, client_uid: str) -> None:
         """Background task: check for due todos every 60s and trigger AI response."""
@@ -1213,6 +1857,31 @@ class WebSocketHandler:
             logger.warning("Music next already in progress, skipping")
             return
 
+        # Advance playlist queue if active
+        if music_player_manager.queue_active():
+            next_song = music_player_manager.next_queued()
+            if not next_song:
+                logger.info("Music next: queue exhausted, stopping")
+                await websocket.send_text(json.dumps({"type": "music-stopped"}))
+                return
+            stream_url = await self._resolve_song_stream(next_song)
+            if not stream_url:
+                logger.warning("Music next: no stream for queued song")
+                return
+            music_player_manager.play_song(next_song, is_recommended=False)
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "music-play-song",
+                        "title": next_song.get("title", "Unknown"),
+                        "stream_url": stream_url,
+                        "video_url": next_song.get("video_url", ""),
+                        "is_recommended": False,
+                    }
+                )
+            )
+            return
+
         async def _music_recommendation_task():
             llm = getattr(context.idle_life_manager, '_subconscious_llm', None) if context.idle_life_manager else None
             if not llm:
@@ -1315,12 +1984,8 @@ class WebSocketHandler:
             )
             return
 
-        stream_url = prev_song.get("stream_url")
+        stream_url = await self._resolve_song_stream(prev_song)
         video_url = prev_song.get("video_url", "")
-        if video_url:
-            fresh_url = await music_player_manager.refresh_stream_url(video_url)
-            if fresh_url:
-                stream_url = fresh_url
 
         if not stream_url:
             await websocket.send_text(

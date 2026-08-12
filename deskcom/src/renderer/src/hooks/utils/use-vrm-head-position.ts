@@ -11,7 +11,9 @@ export function useVrmHeadPosition(): { x: number; y: number } | null {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail && typeof detail.x === 'number') {
-        setPos({ x: detail.x, y: detail.y });
+        setPos((prev) =>
+          prev && prev.x === detail.x && prev.y === detail.y ? prev : { x: detail.x, y: detail.y },
+        );
       }
     };
     window.addEventListener('vrm-head-screen-position', handler as EventListener);

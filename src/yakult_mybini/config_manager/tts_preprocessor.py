@@ -112,6 +112,22 @@ class TTSPreprocessorConfig(I18nMixin):
             en="Remove special characters from the input text",
             zh="从输入文本中删除特殊字符",
         ),
+        "ignore_brackets": Description(
+            en="Ignore text inside square brackets [ ]",
+            zh="忽略方括号 [ ] 内的文本",
+        ),
+        "ignore_parentheses": Description(
+            en="Ignore text inside parentheses ( )",
+            zh="忽略圆括号 ( ) 内的文本",
+        ),
+        "ignore_asterisks": Description(
+            en="Ignore text wrapped in asterisks * * (e.g. *action* descriptions)",
+            zh="忽略星号 * * 包裹的文本（如 *动作* 描述）",
+        ),
+        "ignore_angle_brackets": Description(
+            en="Ignore text inside angle brackets < >",
+            zh="忽略尖括号 < > 内的文本",
+        ),
         "translator_config": Description(
             en="Configuration for translation services", zh="翻译服务的配置"
         ),

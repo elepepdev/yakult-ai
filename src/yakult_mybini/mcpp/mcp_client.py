@@ -123,6 +123,9 @@ class MCPClient:
         logger.info(f"MCPC: Calling tool '{tool_name}' on server '{server_name}'...")
         response = await session.call_tool(tool_name, tool_args)
 
+        # CallToolResult exposes _meta as .meta (pydantic alias)
+        response_meta = getattr(response, "meta", None) or {}
+
         if response.isError:
             error_text = (
                 response.content[0].text
@@ -132,7 +135,7 @@ class MCPClient:
             logger.error(f"MCPC: Error calling tool '{tool_name}': {error_text}")
             # Return error information within the standard structure
             return {
-                "metadata": getattr(response, "metadata", {}),
+                "metadata": response_meta,
                 "content_items": [{"type": "error", "text": error_text}],
             }
 
@@ -162,7 +165,7 @@ class MCPClient:
             )  # Ensure content_items is not empty
 
         result = {
-            "metadata": getattr(response, "metadata", {}),
+            "metadata": response_meta,
             "content_items": content_items,
         }
         return result

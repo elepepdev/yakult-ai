@@ -10,11 +10,10 @@ import {
   useToast,
 } from '@chakra-ui/react';
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { LuX, LuListMusic, LuSearch, LuPlus, LuPlay, LuShuffle, LuDownload, LuArrowLeft } from 'react-icons/lu';
+import { LuX, LuListMusic, LuPlus, LuPlay, LuShuffle, LuDownload, LuArrowLeft, LuVideo } from 'react-icons/lu';
 import { FiTrash2, FiEdit2, FiCheck } from 'react-icons/fi';
 import { useDraggable } from '@/hooks/electron/use-draggable';
-import { usePlaylistFloating, Playlist, PlaylistSong, SearchResult } from '@/hooks/floating/use-playlist-floating';
-import { WashiTape } from '@/components/ui/washi-tape';
+import { usePlaylistFloating, PlaylistSong, SearchResult } from '@/hooks/floating/use-playlist-floating';import { WashiTape } from '@/components/ui/washi-tape';
 import { wsService } from '@/services/websocket-service';
 
 function formatDuration(d: number): string {
@@ -90,15 +89,25 @@ function RenameRow({ initial, onSave, onCancel }: { initial: string; onSave: (n:
 
 function SongRow({
   song,
+  index,
   onPlay,
+  onPlayMV,
   onRemove,
-  onDownload,
+  onDownloadAudio,
+  onDownloadVideo,
+  onDrop,
 }: {
   song: PlaylistSong;
+  index: number;
   onPlay: () => void;
+  onPlayMV: () => void;
   onRemove: () => void;
-  onDownload: () => void;
+  onDownloadAudio: () => void;
+  onDownloadVideo: () => void;
+  onDrop: (fromIndex: number, toIndex: number) => void;
 }) {
+  const [dragOver, setDragOver] = useState(false);
+
   return (
     <HStack
       gap={2}
@@ -107,7 +116,24 @@ function SongRow({
       bg="var(--sk-paper-deep)"
       rounded="md"
       borderWidth="var(--sk-border)"
-      borderColor="var(--sk-outline)"
+      borderColor={dragOver ? 'var(--sk-pencil-deep)' : 'var(--sk-outline)'}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', String(index));
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragOver(false);
+        const from = Number(e.dataTransfer.getData('text/plain'));
+        if (!Number.isNaN(from)) onDrop(from, index);
+      }}
+      css={{ cursor: 'grab' }}
     >
       <IconButton aria-label="Play" size="2xs" variant="ghost" color="var(--sk-success)" onClick={onPlay}>
         <LuPlay size={12} />
@@ -120,8 +146,14 @@ function SongRow({
           <Text fontSize="10px" color="var(--sk-ink-dim)">{formatDuration(song.duration)}</Text>
         )}
       </Box>
-      <IconButton aria-label="Download" size="2xs" variant="ghost" color="var(--sk-pencil-deep)" onClick={onDownload}>
+      <IconButton aria-label="Play MV" size="2xs" variant="ghost" color="var(--sk-repeat)" title="Play MV" onClick={onPlayMV}>
+        <LuVideo size={12} />
+      </IconButton>
+      <IconButton aria-label="Download audio" size="2xs" variant="ghost" color="var(--sk-pencil-deep)" title="Download audio" onClick={onDownloadAudio}>
         <LuDownload size={12} />
+      </IconButton>
+      <IconButton aria-label="Download video" size="2xs" variant="ghost" color="var(--sk-pencil-deep)" title="Download video" onClick={onDownloadVideo}>
+        <LuVideo size={12} />
       </IconButton>
       <IconButton aria-label="Remove" size="2xs" variant="ghost" color="var(--sk-danger)" onClick={onRemove}>
         <FiTrash2 size={12} />
@@ -136,17 +168,19 @@ interface PlaylistFloatingWindowProps {
 }
 
 function PlaylistFloatingWindow({ open, onClose }: PlaylistFloatingWindowProps) {
-  const {
-    playlists, loading, fetchPlaylists, createPlaylist, deletePlaylist, renamePlaylist,
-    addSong, removeSong, downloadSong, playPlaylist, searchYoutube,
+  const { playlists, setPlaylists, loading, fetchPlaylists, createPlaylist, deletePlaylist, renamePlaylist,
+    addSong, removeSong, downloadSong, reorderSong, playPlaylist, searchYoutube,
   } = usePlaylistFloating();
-  const toast = useToast();
+  const { playMV } = useMusicPlayer();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { elementRef, isDragging, handleMouseDown } = useDraggable({
+    componentId: 'playlist-floating',
+  });
 
   useEffect(() => {
     if (open) {
@@ -161,7 +195,7 @@ function PlaylistFloatingWindow({ open, onClose }: PlaylistFloatingWindowProps) 
         setSearching(false);
       }
       if (message?.type === 'playlist-error') {
-        toast.create({
+        toaster.create({
           title: message.message || 'Playlist error',
           type: 'error',
           duration: 2000,
@@ -169,7 +203,7 @@ function PlaylistFloatingWindow({ open, onClose }: PlaylistFloatingWindowProps) 
       }
     });
     return () => sub.unsubscribe();
-  }, [toast]);
+  }, []);
 
   const selected = useMemo(
     () => playlists.find((p) => p.id === selectedId) || null,
@@ -206,11 +240,24 @@ function PlaylistFloatingWindow({ open, onClose }: PlaylistFloatingWindowProps) 
     });
   }, [addSong]);
 
+  const handleDrop = useCallback((fromIndex: number, toIndex: number) => {
+    if (!selected || fromIndex === toIndex) return;
+    const songs = [...selected.songs];
+    const [moved] = songs.splice(fromIndex, 1);
+    songs.splice(toIndex, 0, moved);
+    setPlaylists(prev =>
+      prev.map(p =>
+        p.id === selected.id ? { ...p, songs } : p,
+      ),
+    );
+    reorderSong(selected.id, selected.songs[fromIndex].id, toIndex);
+  }, [selected, reorderSong, setPlaylists]);
+
   if (!open) return null;
 
   return (
     <Box
-      ref={undefined as any}
+      ref={elementRef}
       position="fixed"
       top="80px"
       right="20px"
@@ -226,8 +273,9 @@ function PlaylistFloatingWindow({ open, onClose }: PlaylistFloatingWindowProps) 
       overflow="hidden"
       display="flex"
       flexDirection="column"
+      onMouseDown={handleMouseDown}
+      cursor={isDragging ? 'grabbing' : 'default'}
       userSelect="none"
-      css={{ cursor: 'default' }}
     >
       {/* Header */}
       <Box
@@ -316,16 +364,20 @@ function PlaylistFloatingWindow({ open, onClose }: PlaylistFloatingWindowProps) 
               </Text>
             ) : (
               <VStack gap={1.5} align="stretch" w="100%" mb={3}>
-                {selected.songs.map((song) => (
+                {selected.songs.map((song, index) => (
                   <SongRow
                     key={song.id}
                     song={song}
+                    index={index}
                     onPlay={() => {
                       const idx = selected.songs.findIndex((s) => s.id === song.id);
                       playPlaylist(selected.id, false, idx);
                     }}
                     onRemove={() => removeSong(selected.id, song.id)}
-                    onDownload={() => downloadSong(selected.id, song.video_url, song.title)}
+                    onPlayMV={() => playMV(song.video_url, song.title)}
+                    onDownloadAudio={() => downloadSong(selected.id, song.video_url, song.title, false)}
+                    onDownloadVideo={() => downloadSong(selected.id, song.video_url, song.title, true)}
+                    onDrop={handleDrop}
                   />
                 ))}
               </VStack>

@@ -17,6 +17,7 @@ export function useInputSubtitle() {
     handleSelect,
     inputRef,
     mention,
+    attach,
   } = useTextInput();
 
   const { messages } = useChatHistory();
@@ -64,5 +65,6 @@ export function useInputSubtitle() {
     handleSelect,
     inputRef,
     mention,
+    attach,
   };
 }

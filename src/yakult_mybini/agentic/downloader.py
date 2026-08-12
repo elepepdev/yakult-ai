@@ -12,6 +12,18 @@ VIDEO_DIR = os.environ.get(
 )
 
 
+def to_http_url(path: str, base_url: str) -> str:
+    """Convert a local downloaded file path into an absolute served URL."""
+    if not path or path.startswith("http://") or path.startswith("https://"):
+        return path
+    abspath = os.path.abspath(path)
+    for local_dir, url_prefix in ((DOWNLOAD_DIR, "/playlists/downloads"), (VIDEO_DIR, "/playlists/videos")):
+        if local_dir and abspath.startswith(os.path.abspath(local_dir)):
+            rel = os.path.relpath(abspath, os.path.abspath(local_dir))
+            return f"{base_url}{url_prefix}/{rel}"
+    return path
+
+
 def _safe_filename(title: str) -> str:
     cleaned = re.sub(r'[^\w\- ]', "", title)
     return cleaned.strip()[:80] or "media"
@@ -32,6 +44,7 @@ def _download(video_url: str, title: str, filename: str, out_dir: str, video: bo
         "outtmpl": outtmpl,
         "noplaylist": True,
     }
+    # ponytail: video merge relies on ffmpeg being installed (yt-dlp falls back to 'best' if absent)
     if not video:
         ydl_opts["format"] = "bestaudio/best"
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:

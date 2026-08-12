@@ -59,6 +59,11 @@ def ocr_screen(region: Optional[Tuple[int, int, int, int]] = None, detail: bool 
         return json.dumps({"success": False, "error": str(e)})
 
 
+def ocr_image_from_pil(img) -> str:
+    """OCR text from a PIL image in memory."""
+    return json.dumps(_to_pil(img, False, "image"))
+
+
 def demo():
     from PIL import Image, ImageDraw
     img = Image.new("RGB", (800, 200), "white")

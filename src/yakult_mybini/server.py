@@ -143,6 +143,15 @@ class WebSocketServer:
             name="avatars",
         )
 
+        # Mount playlists directory for downloaded audio streaming
+        if not os.path.exists("playlists"):
+            os.makedirs("playlists")
+        self.app.mount(
+            "/playlists",
+            CORSStaticFiles(directory="playlists"),
+            name="playlists",
+        )
+
         # Mount web tool directory separately from frontend
         self.app.mount(
             "/web-tool",

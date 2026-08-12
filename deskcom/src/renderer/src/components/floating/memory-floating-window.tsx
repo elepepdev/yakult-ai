@@ -14,6 +14,8 @@ import { LuX, LuSearch, LuBrain } from 'react-icons/lu';
 import { FiTrash2, FiEdit2, FiCheck, FiX } from 'react-icons/fi';
 import { useDraggable } from '@/hooks/electron/use-draggable';
 import { useMemoryFloating, MemoryItem } from '@/hooks/floating/use-memory-floating';
+import { WashiTape } from '@/components/ui/washi-tape';
+import { SketchCard } from '@/components/ui/sketch-card';
 
 const CATEGORY_COLORS: Record<string, { bg: string; color: string }> = {
   preference: { bg: '#1a3a5c', color: '#88ccff' },

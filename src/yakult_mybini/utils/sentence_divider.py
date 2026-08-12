@@ -29,6 +29,41 @@ COMMAS = [
 ]
 
 END_PUNCTUATIONS = [".", "!", "?", "。", "！", "？", "...", "。。。"]
+# ponytail: protect emotion tags like [._.] from being split mid-tag by the
+# sentence divider. Punct inside [...] is masked during segmentation.
+_PUNCT_CHARS = {c for c in END_PUNCTUATIONS + COMMAS if len(c) == 1}
+_MASK_MAP = {}
+_cur = 0xE000
+for _c in sorted(_PUNCT_CHARS):
+    _MASK_MAP[_c] = chr(_cur)
+    _cur += 1
+_UNMASK_MAP = {v: k for k, v in _MASK_MAP.items()}
+
+
+def _mask_brackets(text: str) -> str:
+    """Replace punctuation inside [...] so it doesn't trigger sentence splits.
+
+    Handles streaming partial tags ("[._" with no "]" yet): any punctuation
+    after an unclosed "[" is also masked.
+    """
+    out = []
+    in_bracket = False
+    for ch in text:
+        if ch == "[":
+            in_bracket = True
+        elif ch == "]":
+            in_bracket = False
+        elif in_bracket and ch in _MASK_MAP:
+            out.append(_MASK_MAP[ch])
+            continue
+        out.append(ch)
+    return "".join(out)
+
+
+def _unmask(text: str) -> str:
+    for ph, ch in _UNMASK_MAP.items():
+        text = text.replace(ph, ch)
+    return text
 ABBREVIATIONS = [
     "Mr.",
     "Mrs.",
@@ -100,6 +135,8 @@ def is_complete_sentence(text: str) -> bool:
     text = text.strip()
     if not text:
         return False
+
+    text = _mask_brackets(text)
 
     if any(text.endswith(abbrev) for abbrev in ABBREVIATIONS):
         return False
@@ -185,6 +222,7 @@ def segment_text_by_regex(text: str) -> Tuple[List[str], str]:
     if not text:
         return [], ""
 
+    text = _mask_brackets(text)
     complete_sentences = []
     remaining_text = text.strip()
 
@@ -208,7 +246,7 @@ def segment_text_by_regex(text: str) -> Tuple[List[str], str]:
         complete_sentences.append(potential_sentence)
         remaining_text = remaining_text[end_pos:].lstrip()
 
-    return complete_sentences, remaining_text
+    return [_unmask(s) for s in complete_sentences], _unmask(remaining_text)
 
 
 def segment_text_by_pysbd(text: str) -> Tuple[List[str], str]:
@@ -225,6 +263,8 @@ def segment_text_by_pysbd(text: str) -> Tuple[List[str], str]:
     if not text:
         return [], ""
 
+    text = _mask_brackets(text)
+
     try:
         # Detect language
         lang = detect_language(text)
@@ -235,7 +275,7 @@ def segment_text_by_pysbd(text: str) -> Tuple[List[str], str]:
             sentences = segmenter.segment(text)
 
             if not sentences:
-                return [], text
+                return [], _unmask(text)
 
             # Process all but the last sentence
             complete_sentences = []
@@ -259,7 +299,7 @@ def segment_text_by_pysbd(text: str) -> Tuple[List[str], str]:
         logger.debug(
             f"Processed sentences: {complete_sentences}, Remaining: {remaining}"
         )
-        return complete_sentences, remaining
+        return [_unmask(s) for s in complete_sentences], _unmask(remaining)
 
     except Exception as e:
         logger.error(f"Error in sentence segmentation: {e}")
@@ -448,7 +488,7 @@ class SentenceDivider:
                 processed_segment = ""
 
                 # Process complete sentences in text before tag
-                if contains_end_punctuation(text_before_tag):
+                if contains_end_punctuation(_mask_brackets(text_before_tag)):
                     sentences, remaining_before = await self._segment_text(text_before_tag)
                     for sentence in sentences:
                         if sentence.strip():
@@ -494,9 +534,11 @@ class SentenceDivider:
                 if (
                     self._is_first_sentence
                     and self.faster_first_response
-                    and contains_comma(self._buffer)
+                    and contains_comma(_mask_brackets(self._buffer))
                 ):
-                    sentence, remaining = comma_splitter(self._buffer)
+                    sentence, remaining = comma_splitter(_mask_brackets(self._buffer))
+                    sentence = _unmask(sentence)
+                    remaining = _unmask(remaining)
                     if sentence.strip():
                         yield SentenceWithTags(
                             text=sentence.strip(),
@@ -508,7 +550,7 @@ class SentenceDivider:
                         continue  # Restart processing loop
 
                 # Process normal sentences based on end punctuation
-                if contains_end_punctuation(self._buffer):
+                if contains_end_punctuation(_mask_brackets(self._buffer)):
                     sentences, remaining = await self._segment_text(self._buffer)
                     if sentences:  # Only process if segmentation yielded sentences
                         self._buffer = remaining

@@ -7,6 +7,13 @@ interface SongInfo {
   video_url?: string;
 }
 
+interface MVInfo {
+  title: string;
+  stream_url: string;
+  video_url: string;
+  start_time?: number;
+}
+
 interface MusicPlayerState {
   currentSong: SongInfo | null;
   isPlaying: boolean;
@@ -15,6 +22,7 @@ interface MusicPlayerState {
   currentTime: number;
   duration: number;
   isRepeat: boolean;
+  currentMV: MVInfo | null;
   play: (song: SongInfo, recommended?: boolean) => void;
   pause: () => void;
   resume: () => void;
@@ -27,6 +35,8 @@ interface MusicPlayerState {
   clearFeedback: () => void;
   setShowFeedback: (show: boolean) => void;
   toggleRepeat: () => void;
+  playMV: (videoUrl: string, title?: string, startTime?: number) => void;
+  closeMV: () => void;
 }
 
 const MusicPlayerContext = createContext<MusicPlayerState | null>(null);
@@ -39,6 +49,7 @@ export function MusicPlayerProvider({ children }: { children: React.ReactNode })
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isRepeat, setIsRepeat] = useState(false);
+  const [currentMV, setCurrentMV] = useState<MVInfo | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isRepeatRef = useRef(false);
 
@@ -165,11 +176,34 @@ export function MusicPlayerProvider({ children }: { children: React.ReactNode })
     setShowFeedback(false);
   }, []);
 
+  const playMV = useCallback((videoUrl: string, title?: string, startTime?: number) => {
+    sendMessage({
+      type: 'play-mv',
+      video_url: videoUrl,
+      title: title || '',
+      start_time: startTime ?? 0,
+    });
+  }, [sendMessage]);
+
+  const closeMV = useCallback(() => {
+    setCurrentMV(null);
+  }, []);
+
   // Subscribe to WebSocket messages for music events
   useEffect(() => {
     const sub = wsService.onMessage((message: MessageEvent) => {
       switch (message.type) {
         case 'youtube-invite':
+          play(
+            {
+              title: message.title || '',
+              stream_url: message.stream_url || '',
+              video_url: message.video_url || '',
+            },
+            false,
+          );
+          break;
+        case 'playlist-invite':
           play(
             {
               title: message.title || '',
@@ -201,6 +235,18 @@ export function MusicPlayerProvider({ children }: { children: React.ReactNode })
         case 'music-error':
           console.error('Music error:', message.message);
           break;
+        case 'mv-invite':
+          setCurrentMV({
+            title: message.title || '',
+            stream_url: message.stream_url || '',
+            video_url: message.video_url || '',
+            start_time: message.start_time || 0,
+          });
+          break;
+        case 'mv-error':
+          console.error('MV error:', message.message);
+          setCurrentMV(null);
+          break;
         default:
           break;
       }
@@ -216,6 +262,7 @@ export function MusicPlayerProvider({ children }: { children: React.ReactNode })
     currentTime,
     duration,
     isRepeat,
+    currentMV,
     play,
     pause,
     resume,
@@ -228,7 +275,9 @@ export function MusicPlayerProvider({ children }: { children: React.ReactNode })
     clearFeedback,
     setShowFeedback,
     toggleRepeat,
-  }), [currentSong, isPlaying, isRecommended, showFeedback, currentTime, duration, isRepeat, play, pause, resume, stop, next, prev, seekTo, feedbackLike, feedbackDislike, clearFeedback, toggleRepeat]);
+    playMV,
+    closeMV,
+  }), [currentSong, isPlaying, isRecommended, showFeedback, currentTime, duration, isRepeat, currentMV, play, pause, resume, stop, next, prev, seekTo, feedbackLike, feedbackDislike, clearFeedback, toggleRepeat, playMV, closeMV]);
 
   return (
     <MusicPlayerContext.Provider value={contextValue}>

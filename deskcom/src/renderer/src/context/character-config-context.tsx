@@ -10,6 +10,7 @@ import { getPlatform } from '@/platforms';
 export interface ConfigFile {
   filename: string;
   name: string;
+  model_type?: string;
 }
 
 /**

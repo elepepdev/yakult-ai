@@ -35,6 +35,9 @@ export function usePlaylistFloating() {
         setPlaylists(message.data || []);
         setLoading(false);
       }
+      if (message?.type === 'download-song-result') {
+        wsService.sendMessage({ type: 'fetch-playlists' });
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -77,13 +80,24 @@ export function usePlaylistFloating() {
     );
   }, []);
 
-  const downloadSong = useCallback((playlistId: string, videoUrl: string, title: string) => {
+  const downloadSong = useCallback((playlistId: string, videoUrl: string, title: string, video: boolean = false) => {
     wsService.sendMessage({
       type: 'download-song',
       playlist_id: playlistId,
       video_url: videoUrl,
       title,
+      video,
     });
+  }, []);
+
+  const reorderSong = useCallback((playlistId: string, songId: string, newIndex: number) => {
+    wsService.sendMessage({
+      type: 'reorder-song',
+      playlist_id: playlistId,
+      song_id: songId,
+      new_index: newIndex,
+    });
+    wsService.sendMessage({ type: 'fetch-playlists' });
   }, []);
 
   const playPlaylist = useCallback((playlistId: string, shuffle: boolean = false, startIndex: number = 0) => {
@@ -96,6 +110,7 @@ export function usePlaylistFloating() {
 
   return {
     playlists,
+    setPlaylists,
     loading,
     fetchPlaylists,
     createPlaylist,
@@ -104,6 +119,7 @@ export function usePlaylistFloating() {
     addSong,
     removeSong,
     downloadSong,
+    reorderSong,
     playPlaylist,
     searchYoutube,
   };

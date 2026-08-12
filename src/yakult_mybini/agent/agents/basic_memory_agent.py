@@ -1,8 +1,8 @@
+import asyncio
 import json
 import re
 import shlex
 import uuid
-import asyncio
 from datetime import datetime, timezone
 from typing import (
     AsyncIterator,
@@ -320,7 +320,7 @@ class BasicMemoryAgent(AgentInterface):
         )
         logger.info(f"Handled interrupt with role '{interrupt_role}'.")
 
-    def _to_text_prompt(self, input_data: BatchInput) -> str:
+    def _to_text_prompt(self, input_data: BatchInput, include_files: bool = True) -> str:
         """Format input data to text prompt."""
         message_parts = []
 
@@ -335,6 +335,15 @@ class BasicMemoryAgent(AgentInterface):
         if input_data.images:
             message_parts.append("\n[User has also provided images]")
 
+        if include_files and input_data.files:
+            file_blocks = []
+            for f in input_data.files:
+                content = f.data if isinstance(f.data, str) else ""
+                if content.strip():
+                    file_blocks.append(f"[File: {f.name}]\n{content}")
+            if file_blocks:
+                message_parts.append("\n" + "\n\n".join(file_blocks))
+
         return "\n".join(message_parts).strip()
 
     def _to_messages(self, input_data: BatchInput) -> List[Dict[str, Any]]:
@@ -342,31 +351,49 @@ class BasicMemoryAgent(AgentInterface):
         messages = self._memory.copy()
         user_content = []
         text_prompt = self._to_text_prompt(input_data)
+        memory_prompt = self._to_text_prompt(input_data, include_files=False)
         if text_prompt:
             user_content.append({"type": "text", "text": text_prompt})
 
         if input_data.images:
-            image_added = False
-            for img_data in input_data.images:
-                if isinstance(img_data.data, str) and img_data.data.startswith(
-                    "data:image"
-                ):
-                    user_content.append(
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": img_data.data, "detail": "auto"},
-                        }
-                    )
-                    image_added = True
-                else:
-                    logger.error(
-                        f"Invalid image data format: {type(img_data.data)}. Skipping image."
-                    )
-
-            if not image_added and not text_prompt:
+            llm_supports_images = getattr(self._llm, "supports_images", True)
+            if not llm_supports_images:
                 logger.warning(
-                    "User input contains images but none could be processed."
+                    "LLM does not support images; omitting image content from request."
                 )
+                user_content.append(
+                    {
+                        "type": "text",
+                        "text": (
+                            "\n[User attached image(s), but this model is text-only. "
+                            "If you need to know what is on screen or in the image, "
+                            "call ocr_screen or ocr_image to read its contents.]"
+                        ),
+                    }
+                )
+                image_added = False
+            else:
+                image_added = False
+                for img_data in input_data.images:
+                    if isinstance(img_data.data, str) and img_data.data.startswith(
+                        "data:image"
+                    ):
+                        user_content.append(
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": img_data.data, "detail": "auto"},
+                            }
+                        )
+                        image_added = True
+                    else:
+                        logger.error(
+                            f"Invalid image data format: {type(img_data.data)}. Skipping image."
+                        )
+
+                if not image_added and not text_prompt:
+                    logger.warning(
+                        "User input contains images but none could be processed."
+                    )
 
         if not user_content and not input_data.images:
             logger.warning("No content generated for user message.")
@@ -382,7 +409,7 @@ class BasicMemoryAgent(AgentInterface):
 
             if not skip_memory:
                 self._add_message(
-                    text_prompt if text_prompt else "[User provided image(s)]", "user"
+                    memory_prompt if memory_prompt else "[User provided image(s)]", "user"
                 )
 
         return messages
@@ -828,10 +855,53 @@ class BasicMemoryAgent(AgentInterface):
 
                 # Handle summon_specialist calls directly (not via MCP)
                 for tc in summon_calls:
+                    # Emit running status for summon_specialist call itself
+                    try:
+                        args_parsed = json.loads(tc.function.arguments)
+                        grp = args_parsed.get("group", "specialist")
+                    except Exception:
+                        grp = "specialist"
+
+                    yield {
+                        "type": "tool_call_status",
+                        "tool_id": tc.id,
+                        "tool_name": f"summon_specialist ({grp})",
+                        "status": "running",
+                        "content": f"Delegating request to {grp} specialist...",
+                        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+                    }
+
                     if self._specialist_llm and self._tool_groups:
-                        statuses, tool_result = await self._handle_summon_specialist(tc)
+                        status_queue = asyncio.Queue()
+
+                        def _on_sub_status(status_dict: dict):
+                            status_queue.put_nowait(status_dict)
+
+                        async def _run_specialist_task():
+                            res = await self._handle_summon_specialist(tc, on_status_update=_on_sub_status)
+                            await status_queue.put(None)
+                            return res
+
+                        task = asyncio.create_task(_run_specialist_task())
+
+                        while True:
+                            s = await status_queue.get()
+                            if s is None:
+                                break
+                            yield s
+
+                        statuses, tool_result = await task
                         for s in statuses:
                             yield s
+                        
+                        yield {
+                            "type": "tool_call_status",
+                            "tool_id": tc.id,
+                            "tool_name": f"summon_specialist ({grp})",
+                            "status": "completed",
+                            "content": f"Specialist {grp} finished execution.",
+                            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+                        }
                     else:
                         logger.error(
                             "summon_specialist called but specialist LLM not configured"
@@ -840,6 +910,14 @@ class BasicMemoryAgent(AgentInterface):
                             "role": "tool",
                             "tool_call_id": tc.id,
                             "content": "Error: Specialist LLM not configured",
+                        }
+                        yield {
+                            "type": "tool_call_status",
+                            "tool_id": tc.id,
+                            "tool_name": f"summon_specialist ({grp})",
+                            "status": "error",
+                            "content": "Specialist LLM not configured",
+                            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
                         }
                     all_tool_results.append(tool_result)
 
@@ -922,7 +1000,9 @@ class BasicMemoryAgent(AgentInterface):
                 return
 
     async def _handle_summon_specialist(
-        self, tool_call: ToolCallObject
+        self,
+        tool_call: ToolCallObject,
+        on_status_update: Optional[Callable[[Dict[str, Any]], Any]] = None,
     ) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """Handle a summon_specialist tool call.
 
@@ -985,6 +1065,7 @@ class BasicMemoryAgent(AgentInterface):
         result = await specialist.process(
             user_message=request,
             conversation_context=self.get_recent_context(n=3),
+            on_status_update=on_status_update,
         )
 
         if result.error:

@@ -397,12 +397,12 @@ class ToolExecutor:
                 + "Z",
             }
 
-            # For stagehand_navigate tool, include browser view links if available
-            if tool_name == "stagehand_navigate" and not is_error:
+            # For tools that return liveViewData (browser/automation), include browser view links if available
+            if not is_error:
                 live_view_data = metadata.get("liveViewData", {})
                 if live_view_data:
                     logger.info(
-                        f"Found live view data for stagehand_navigate: {live_view_data}"
+                        f"Found live view data for {tool_name}: {live_view_data}"
                     )
                     status_update["browser_view"] = live_view_data
 
@@ -428,6 +428,40 @@ class ToolExecutor:
                             "stream_url": yt_data["stream_url"],
                             "title": yt_data.get("title", "Unknown"),
                             "video_url": yt_data.get("video_url", ""),
+                            "request_id": tool_id,
+                        }
+                except Exception:
+                    pass
+
+            # Detect playlist play invite
+            if tool_name == "play_playlist" and not is_error:
+                try:
+                    pl_data = json.loads(text_content)
+                    if pl_data.get("success"):
+                        yield {
+                            "type": "playlist-invite",
+                            "tool_id": tool_id,
+                            "playlist_id": pl_data.get("playlist_id", ""),
+                            "stream_url": pl_data.get("stream_url", ""),
+                            "title": pl_data.get("title", "Unknown"),
+                            "video_url": pl_data.get("video_url", ""),
+                            "shuffle": pl_data.get("shuffle", False),
+                            "request_id": tool_id,
+                        }
+                except Exception:
+                    pass
+
+            # Detect MV (music video) playback invite
+            if tool_name == "play_mv" and not is_error:
+                try:
+                    mv_data = json.loads(text_content)
+                    if mv_data.get("success"):
+                        yield {
+                            "type": "mv-invite",
+                            "tool_id": tool_id,
+                            "stream_url": mv_data.get("stream_url", ""),
+                            "title": mv_data.get("title", "Unknown"),
+                            "video_url": mv_data.get("video_url", ""),
                             "request_id": tool_id,
                         }
                 except Exception:

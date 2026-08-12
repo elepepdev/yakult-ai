@@ -23,6 +23,7 @@
       "customBgUrlPlaceholder": "输入图片URL",
       "customBgUrl": "或输入自定义背景URL",
       "characterPreset": "角色预设",
+      "theme": "主题",
       "wsUrl": "WebSocket地址",
       "baseUrl": "基础URL",
       "imageCompressionQuality": "图片压缩质量",

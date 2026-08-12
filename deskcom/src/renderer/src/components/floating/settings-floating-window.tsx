@@ -8,11 +8,15 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LuX } from 'react-icons/lu';
 import { useDraggable } from '@/hooks/electron/use-draggable';
+import { WashiTape } from '@/components/ui/washi-tape';
 import General from './setting/general';
 import Live2D from './setting/live2d';
 import ASR from './setting/asr';
 import TTS from './setting/tts';
 import Agent from './setting/agent';
+import Character from './setting/character';
+import System from './setting/system';
+import Advanced from './setting/advanced';
 import About from './setting/about';
 
 interface SettingsFloatingWindowProps {
@@ -26,6 +30,9 @@ const tabItems = [
   { value: 'asr', labelKey: 'settings.tabs.asr' },
   { value: 'tts', labelKey: 'settings.tabs.tts' },
   { value: 'agent', labelKey: 'settings.tabs.agent' },
+  { value: 'character', labelKey: 'settings.tabs.character' },
+  { value: 'system', labelKey: 'settings.tabs.system' },
+  { value: 'advanced', labelKey: 'settings.tabs.advanced' },
   { value: 'about', labelKey: 'settings.tabs.about' },
 ];
 
@@ -121,12 +128,15 @@ function SettingsFloatingWindow({ open, onClose }: SettingsFloatingWindowProps) 
 
             <Box flex={1} minW={0}>
               <Tabs.ContentGroup>
-                <Tabs.Content value="general"><General /></Tabs.Content>
-                <Tabs.Content value="live2d"><Live2D /></Tabs.Content>
-                <Tabs.Content value="asr"><ASR /></Tabs.Content>
-                <Tabs.Content value="tts"><TTS /></Tabs.Content>
-                <Tabs.Content value="agent"><Agent /></Tabs.Content>
-                <Tabs.Content value="about"><About /></Tabs.Content>
+                <Tabs.Content value="general" lazyMount unmountOnExit><General /></Tabs.Content>
+                <Tabs.Content value="live2d" lazyMount unmountOnExit><Live2D /></Tabs.Content>
+                <Tabs.Content value="asr" lazyMount unmountOnExit><ASR /></Tabs.Content>
+                <Tabs.Content value="tts" lazyMount unmountOnExit><TTS /></Tabs.Content>
+                <Tabs.Content value="agent" lazyMount unmountOnExit><Agent /></Tabs.Content>
+                <Tabs.Content value="character" lazyMount unmountOnExit><Character /></Tabs.Content>
+                <Tabs.Content value="system" lazyMount unmountOnExit><System /></Tabs.Content>
+                <Tabs.Content value="advanced" lazyMount unmountOnExit><Advanced /></Tabs.Content>
+                <Tabs.Content value="about" lazyMount unmountOnExit><About /></Tabs.Content>
               </Tabs.ContentGroup>
             </Box>
           </Box>

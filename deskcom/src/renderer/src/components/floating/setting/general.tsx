@@ -1,6 +1,7 @@
 import { Box, Field, Select, Switch, Input, createListCollection } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
 import { useGeneralSettings } from '@/hooks/floating/setting/use-general-settings';
+import { useTheme } from '@/context/theme-context';
 
 const fieldLabelStyles = {
   color: '#c0c0e0',
@@ -34,6 +35,7 @@ const selectTriggerStyles = {
 
 function General() {
   const { t, i18n } = useTranslation();
+  const { uiTheme, setUiTheme } = useTheme();
   const {
     language,
     setLanguage,
@@ -68,6 +70,13 @@ function General() {
       label: f.name || f.filename,
       value: f.filename,
     })),
+  });
+
+  const themeOptions = createListCollection({
+    items: [
+      { label: 'Default', value: 'default' },
+      { label: 'Sketch', value: 'sketch' },
+    ],
   });
 
   return (
@@ -129,6 +138,24 @@ function General() {
           </Select.Trigger>
           <Select.Content>
             {characterOptions.items.map((opt) => (
+              <Select.Item item={opt} key={opt.value}>{opt.label}</Select.Item>
+            ))}
+          </Select.Content>
+        </Select.Root>
+      </Field.Root>
+
+      <Field.Root>
+        <Field.Label css={fieldLabelStyles}>{t('settings.general.theme')}</Field.Label>
+        <Select.Root
+          collection={themeOptions}
+          value={[uiTheme]}
+          onValueChange={(e) => setUiTheme(e.value[0] as 'default' | 'sketch')}
+        >
+          <Select.Trigger css={selectTriggerStyles}>
+            <Select.ValueText />
+          </Select.Trigger>
+          <Select.Content>
+            {themeOptions.items.map((opt) => (
               <Select.Item item={opt} key={opt.value}>{opt.label}</Select.Item>
             ))}
           </Select.Content>

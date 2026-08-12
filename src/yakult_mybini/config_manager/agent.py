@@ -44,6 +44,9 @@ class BasicMemoryAgentConfig(I18nMixin, BaseModel):
         "openrouter_llm",
         "nvidia_nim_llm",
         "cloudflare_workers_llm",
+        "opencode_zen_llm",
+        "opencode_go_llm",
+        "juan_router_llm",
     ] = Field(..., alias="llm_provider")
 
     faster_first_response: Optional[bool] = Field(True, alias="faster_first_response")

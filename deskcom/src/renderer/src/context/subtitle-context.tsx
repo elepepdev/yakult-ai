@@ -18,6 +18,15 @@ interface SubtitleState {
 
   /** Toggle subtitle visibility */
   setShowSubtitle: (show: boolean) => void
+
+  /** Current subconscious thought-bubble text */
+  subconsciousText: string
+
+  /** Set subconscious thought-bubble text */
+  setSubconsciousText: (text: string) => void
+
+  /** Clear the thought bubble (triggers pop animation) */
+  dismissSubconscious: () => void
 }
 
 /**
@@ -44,6 +53,7 @@ export const SubtitleProvider = memo(({ children }: { children: React.ReactNode 
   // State management
   const [subtitleText, setSubtitleText] = useState<string>(DEFAULT_SUBTITLE.text);
   const [showSubtitle, setShowSubtitle] = useState<boolean>(true);
+  const [subconsciousText, setSubconsciousText] = useState<string>('');
 
   // Memoized context value
   const contextValue = useMemo(
@@ -52,8 +62,11 @@ export const SubtitleProvider = memo(({ children }: { children: React.ReactNode 
       setSubtitleText,
       showSubtitle,
       setShowSubtitle,
+      subconsciousText,
+      setSubconsciousText,
+      dismissSubconscious: () => setSubconsciousText(''),
     }),
-    [subtitleText, showSubtitle],
+    [subtitleText, showSubtitle, subconsciousText],
   );
 
   return (

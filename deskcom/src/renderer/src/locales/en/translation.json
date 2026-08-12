@@ -23,6 +23,7 @@
       "customBgUrlPlaceholder": "Enter image URL",
       "customBgUrl": "Or enter a custom background URL",
       "characterPreset": "Character Preset",
+      "theme": "Theme",
       "wsUrl": "WebSocket URL",
       "baseUrl": "Base URL",
       "imageCompressionQuality": "Image Compression Quality",

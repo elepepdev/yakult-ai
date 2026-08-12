@@ -107,6 +107,15 @@ class LettaAgent(AgentInterface):
             elif text_data.source == TextSource.CLIPBOARD:
                 message_parts.append(f"[Clipboard content: {text_data.content}]")
 
+        if input_data.files:
+            file_blocks = []
+            for f in input_data.files:
+                content = f.data if isinstance(f.data, str) else ""
+                if content.strip():
+                    file_blocks.append(f"[File: {f.name}]\n{content}")
+            if file_blocks:
+                message_parts.append("\n" + "\n\n".join(file_blocks))
+
         return "\n".join(message_parts)
 
     def _to_messages(self, input_data: BatchInput) -> List[Dict[str, Any]]:

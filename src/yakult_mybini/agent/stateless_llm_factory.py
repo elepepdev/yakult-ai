@@ -35,6 +35,9 @@ class LLMFactory:
             or llm_provider == "openrouter_llm"
             or llm_provider == "nvidia_nim_llm"
             or llm_provider == "cloudflare_workers_llm"
+            or llm_provider == "opencode_zen_llm"
+            or llm_provider == "opencode_go_llm"
+            or llm_provider == "juan_router_llm"
         ):
             return OpenAICompatibleLLM(
                 model=kwargs.get("model"),
@@ -46,6 +49,7 @@ class LLMFactory:
                 max_tokens=kwargs.get("max_tokens"),
                 top_p=kwargs.get("top_p"),
                 presence_penalty=kwargs.get("presence_penalty"),
+                supports_images=kwargs.get("supports_images", True),
             )
         if llm_provider == "stateless_llm_with_template":
             return StatelessLLMWithTemplate(
@@ -87,3 +91,4 @@ class LLMFactory:
 
 # Creating an LLM instance using a factory
 # llm_instance = LLMFactory.create_llm("ollama", **config_dict)
+

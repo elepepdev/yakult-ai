@@ -29,6 +29,33 @@
         }
     },
     {
+        "name": "Jenny",
+        "type": "orb",
+        "description": "Jenny — J.A.R.V.I.S-style blue orb",
+        "url": "/orb/jenny",
+        "emotionMap": {
+            "-_-": "-_-",
+            "x_x": "x_x",
+            "^_^": "^_^",
+            "T_T": "T_T",
+            ">_<": ">_<",
+            "o_O": "o_O",
+            "0_0": "0_0",
+            "♥_♥": "♥_♥",
+            "*_*": "*_*",
+            "@_@": "@_@",
+            "._.": "._.",
+            ";_;": ";_;",
+            "u_u": "u_u",
+            "U_U": "U_U",
+            "z_z": "z_z",
+            "q_q": "q_q",
+            ">_>": ">_>",
+            "^_~": "^_~",
+            "n_n": "n_n"
+        }
+    },
+    {
         "name": "Yakult",
         "type": "vrm",
         "url": "/vrm-models/Yakult.vrm",
@@ -38,7 +65,10 @@
             "anger": "angry",
             "sadness": "sad",
             "surprise": "surprised",
-            "relaxed": "relaxed"
+            "relaxed": "relaxed",
+            "sleepy": "blink",
+            "wink": "blinkRight",
+            "wink_left": "blinkLeft"
         },
         "visemeMap": {
             "aa": "aa",

@@ -270,6 +270,15 @@ class IdleLifeManager:
         self._idle_since = None
         self._event_queue.clear()
         self._boost_mood(0.08)
+        if self._send:
+            try:
+                msg = json.dumps({"type": "clear-subconscious"})
+                if asyncio.iscoroutinefunction(self._send):
+                    asyncio.create_task(self._send(msg))
+                else:
+                    self._send(msg)
+            except Exception:
+                pass
         if was_sleeping:
             logger.info("IdleLife: woken up by user message")
             if self._config.wake_greeting_enabled:
@@ -503,6 +512,7 @@ class IdleLifeManager:
                         "text": "*{name} bermimpi…* {dream}".format(
                             name=self._character_name, dream=dream
                         ),
+                        "subconscious": True,
                     })
                 )
                 logger.debug(f"IdleLife: Dream '{dream[:60]}...'")
@@ -626,11 +636,13 @@ class IdleLifeManager:
         logger.debug(f"IdleLife: VRMA '{anim}' + expression '{expression}'")
 
     async def _exec_idle_text(self) -> None:
-        if not self._send:
+        if not self._send or self._state != "IDLE":
             return
 
         texts = self._pick_idle_texts()
         text = random.choice(texts)
+        if self._state != "IDLE":
+            return
         await self._send(
             json.dumps({
                 "type": "full-text",
@@ -640,7 +652,7 @@ class IdleLifeManager:
         logger.debug(f"IdleLife: IdleText '{text}'")
 
     async def _exec_subconscious(self) -> None:
-        if not self._send:
+        if not self._send or self._state != "IDLE":
             return
 
         if not self._subconscious_llm:
@@ -660,24 +672,29 @@ class IdleLifeManager:
                 messages=[{"role": "user", "content": "Apa yang sedang kamu pikirkan?"}],
                 system=system,
             ):
+                if self._state != "IDLE":
+                    logger.debug("IdleLife: subconscious cancelled (state changed to non-idle)")
+                    return
                 if isinstance(chunk, str):
                     chunks.append(chunk)
 
             thought = "".join(chunks).strip()
-            if thought:
+            if thought and self._state == "IDLE":
                 await self._send(
                     json.dumps({
                         "type": "full-text",
                         "text": thought,
+                        "subconscious": True,
                     })
                 )
-                logger.debug(f"IdleLife: Subconscious '{thought[:60]}...'")
-            else:
+                logger.info(f"IdleLife: Subconscious '{thought}'")
+            elif self._state == "IDLE":
                 await self._exec_idle_text()
 
         except Exception as e:
             logger.warning(f"IdleLife: subconscious LLM error: {e}")
-            await self._exec_idle_text()
+            if self._state == "IDLE":
+                await self._exec_idle_text()
 
     async def _exec_proactive_speak(self) -> None:
         if not self._proactive_trigger:

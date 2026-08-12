@@ -1,7 +1,7 @@
 import { FaTools } from 'react-icons/fa';
 import {
   LuBell, LuSend, LuMic, LuMicOff, LuHand, LuX, LuLock, LuLockOpen, LuSettings, LuMessageSquare,
-  LuCamera, LuMonitor, LuGlobe, LuBrain,
+  LuCamera, LuMonitor, LuGlobe, LuBrain, LuListMusic,
 } from 'react-icons/lu';
 import {
   Box,
@@ -21,13 +21,17 @@ import { useDraggable } from '@/hooks/electron/use-draggable';
 import { inputSubtitleStyles } from './electron-style';
 import { useForceIgnoreMouse } from '@/hooks/utils/use-force-ignore-mouse';
 import { FormattedText } from '@/components/ui/formatted-text';
+import { useTypewriter } from '@/hooks/utils/use-typewriter';
 import { useCamera } from '@/context/camera-context';
 import { useScreenCaptureContext } from '@/context/screen-capture-context';
 import { useBrowser } from '@/context/browser-context';
+import { useSubtitle } from '@/context/subtitle-context';
+import { FileAttachButton, FileAttachChips } from '@/components/ui/file-attach';
 import SettingsFloatingWindow from '@/components/floating/settings-floating-window';
 import ChatHistoryFloatingWindow from '@/components/floating/chat-history-floating-window';
 import MemoryFloatingWindow from '@/components/floating/memory-floating-window';
 import TodoFloatingWindow from '@/components/floating/todo-floating-window';
+import PlaylistFloatingWindow from '@/components/floating/playlist-floating-window';
 import { getPlatform } from '@/platforms';
 
 export function InputSubtitle() {
@@ -47,10 +51,12 @@ export function InputSubtitle() {
     handleSelect,
     inputRef,
     mention,
+    attach,
   } = useInputSubtitle();
 
   const { messages } = useChatHistory();
   const { forceIgnoreMouse } = useForceIgnoreMouse();
+  const { dismissSubconscious } = useSubtitle();
 
   const {
     isStreaming: cameraOn,
@@ -92,6 +98,7 @@ export function InputSubtitle() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [todoOpen, setTodoOpen] = useState(false);
+  const [playlistOpen, setPlaylistOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
 
   const runningToolCalls = useMemo(
@@ -100,6 +107,7 @@ export function InputSubtitle() {
   );
   const hasRunningTools = runningToolCalls.length > 0;
   const isProcessing = aiState === 'thinking-speaking' || aiState === 'loading';
+  const typedLastAIMessage = useTypewriter(lastAIMessage ?? '');
 
   const {
     elementRef,
@@ -165,8 +173,9 @@ export function InputSubtitle() {
             pt={2}
             pb={1}
             gap={1}
-            borderBottom="1px solid"
-            borderColor="whiteAlpha.100"
+            borderBottom="1.5px solid"
+            borderColor="var(--sk-outline)"
+            bg="var(--sk-paper-deep)"
           >
             <IconButton
               aria-label="Settings"
@@ -208,6 +217,16 @@ export function InputSubtitle() {
             >
               <LuBell size={14} />
             </IconButton>
+            <IconButton
+              aria-label="Playlists"
+              size="2xs"
+              variant="ghost"
+              color={playlistOpen ? "blue.300" : "whiteAlpha.600"}
+              _hover={{ bg: 'whiteAlpha.200', color: 'whiteAlpha.900' }}
+              onClick={() => setPlaylistOpen(!playlistOpen)}
+            >
+              <LuListMusic size={14} />
+            </IconButton>
             <Box flex={1} />
             <IconButton
               aria-label="Close subtitle"
@@ -225,7 +244,7 @@ export function InputSubtitle() {
             >
               {lastAIMessage && (
                 <Text {...inputSubtitleStyles.messageText}>
-                  <FormattedText text={lastAIMessage} />
+                  <FormattedText text={typedLastAIMessage} />
                 </Text>
               )}
             </VStack>
@@ -304,7 +323,18 @@ export function InputSubtitle() {
           </Box>
 
           <Box {...inputSubtitleStyles.inputBox}>
+            <FileAttachChips files={attach.files} onRemove={attach.removeFile} />
             <Stack direction="row" gap="2" p="2">
+              <input
+                ref={attach.fileInputRef}
+                type="file"
+                multiple
+                hidden
+                onChange={(e) => {
+                  attach.onFilesSelected(e.target.files);
+                  e.target.value = '';
+                }}
+              />
               <Box position="relative" flex="1">
                 <Input
                   ref={inputRef}
@@ -312,6 +342,7 @@ export function InputSubtitle() {
                   onChange={handleInputChange}
                   onKeyDown={handleKeyPress}
                   onSelect={handleSelect}
+                  onFocus={dismissSubconscious}
                   onCompositionStart={handleCompositionStart}
                   onCompositionEnd={handleCompositionEnd}
                   placeholder="Type your message... (use @ to mention files)"
@@ -324,10 +355,10 @@ export function InputSubtitle() {
                     left="0"
                     right="0"
                     mb={1}
-                    bg="rgba(30, 30, 58, 0.9)"
-                    border="1px solid"
-                    borderColor="#3a3a6a"
-                    rounded="md"
+                    bg="var(--sk-paper)"
+                    border="1.5px solid"
+                    borderColor="var(--sk-outline-soft)"
+                    borderRadius="var(--sk-radius-card)"
                     boxShadow="0 -4px 20px rgba(0,0,0,0.6)"
                     maxH="240px"
                     overflowY="auto"
@@ -336,7 +367,7 @@ export function InputSubtitle() {
                       backdropFilter: 'blur(12px)',
                       '&::-webkit-scrollbar': { width: '4px' },
                       '&::-webkit-scrollbar-track': { bg: 'transparent' },
-                      '&::-webkit-scrollbar-thumb': { bg: '#3a3a6a', borderRadius: '2px' },
+                      '&::-webkit-scrollbar-thumb': { bg: 'var(--sk-outline-soft)', borderRadius: '2px' },
                     }}
                   >
                     {mention.suggestions.map((entry, idx) => (
@@ -345,9 +376,9 @@ export function InputSubtitle() {
                         px={3}
                         py={1.5}
                         cursor="pointer"
-                        bg={idx === mention.selectedIndex ? '#2a2a5a' : 'transparent'}
-                        color={idx === mention.selectedIndex ? '#ffffff' : '#c0c0e0'}
-                        _hover={{ bg: '#2a2a5a', color: '#ffffff' }}
+                        bg={idx === mention.selectedIndex ? 'var(--sk-outline-hover)' : 'transparent'}
+                        color={idx === mention.selectedIndex ? '#ffffff' : 'var(--sk-ink-soft)'}
+                        _hover={{ bg: 'var(--sk-outline-hover)', color: '#ffffff' }}
                         onClick={() => mention.insertMention(entry)}
                         fontSize="sm"
                         fontFamily="mono"
@@ -358,6 +389,7 @@ export function InputSubtitle() {
                   </Box>
                 )}
               </Box>
+              <FileAttachButton onPick={attach.openPicker} uploading={attach.uploading} />
               <Button
                 onClick={handleSend}
                 {...inputSubtitleStyles.sendButton}
@@ -384,6 +416,10 @@ export function InputSubtitle() {
       <TodoFloatingWindow
         open={todoOpen}
         onClose={() => setTodoOpen(false)}
+      />
+      <PlaylistFloatingWindow
+        open={playlistOpen}
+        onClose={() => setPlaylistOpen(false)}
       />
     </>
   );

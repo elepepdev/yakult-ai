@@ -89,8 +89,8 @@ class WebSocketHandler:
         self.default_context_cache = default_context_cache
         self.received_data_buffers: Dict[str, np.ndarray] = {}
 
-        # Pending user approvals: approval_id -> asyncio.Future[bool]
-        self._pending_approvals: Dict[str, asyncio.Future] = {}
+        # Pending user approvals: approval_id -> (client_uid, asyncio.Future[bool])
+        self._pending_approvals: Dict[str, tuple] = {}
 
         # Message handlers mapping
         self._message_handlers = self._init_message_handlers()
@@ -368,7 +368,7 @@ class WebSocketHandler:
         approval_id = f"appr_{client_uid[:8]}_{len(self._pending_approvals)}_{os.urandom(3).hex()}"
         loop = asyncio.get_running_loop()
         future: asyncio.Future = loop.create_future()
-        self._pending_approvals[approval_id] = future
+        self._pending_approvals[approval_id] = (client_uid, future)
 
         try:
             await websocket.send_text(
@@ -404,10 +404,16 @@ class WebSocketHandler:
         """Resolve a pending approval with the user's accept/deny decision."""
         approval_id = data.get("approval_id")
         approved = bool(data.get("approved"))
-        future = self._pending_approvals.get(approval_id)
-        if future is None:
+        entry = self._pending_approvals.get(approval_id)
+        if entry is None:
             logger.warning(
                 f"Approval response for unknown/expired id '{approval_id}' (client {client_uid})"
+            )
+            return
+        owner_uid, future = entry
+        if owner_uid != client_uid:
+            logger.warning(
+                f"Approval '{approval_id}' owned by {owner_uid} — ignoring response from {client_uid}"
             )
             return
         if not future.done():
@@ -462,8 +468,8 @@ class WebSocketHandler:
         self.received_data_buffers.pop(client_uid, None)
 
         # Cancel any pending approvals for this client (default to denied)
-        for approval_id, future in list(self._pending_approvals.items()):
-            if approval_id.startswith(f"appr_{client_uid[:8]}_") and not future.done():
+        for approval_id, (owner_uid, future) in list(self._pending_approvals.items()):
+            if owner_uid == client_uid and not future.done():
                 future.set_result(False)
                 self._pending_approvals.pop(approval_id, None)
         logger.info(f"Cleared pending approvals for {client_uid}")

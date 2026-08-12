@@ -45,27 +45,12 @@ class ToolExecutor:
         self._approval_callback: Optional[ApprovalCallback] = None
 
     def set_approval_callback(self, callback: Optional[ApprovalCallback]) -> None:
-        """Set the user-approval callback for dangerous operations."""
-        self._approval_callback = callback
+        """Set the user-approval callback for dangerous operations.
 
-    async def _request_approval(self, payload: Dict[str, Any]) -> bool:
-        """Ask the user to approve a dangerous operation.
-
-        Returns True if approved, False otherwise (denied / timeout / no UI).
+        May be a sync callable or a coroutine function; ``file_tools``
+        handles both when invoking it.
         """
-        if not self._approval_callback:
-            logger.warning(
-                "No approval callback configured — denying dangerous tool operation."
-            )
-            return False
-        try:
-            result = self._approval_callback(payload)
-            if asyncio.iscoroutine(result):
-                result = await result
-            return bool(result)
-        except Exception as e:
-            logger.error(f"Approval callback error: {e}")
-            return False
+        self._approval_callback = callback
 
     def parse_tool_call(self, call: Union[Dict[str, Any], ToolCallObject]) -> tuple:
         """Parse tool call from different formats.

@@ -106,7 +106,9 @@
     "diffHint": "The AI wants to modify this file. Review the changes below:",
     "newFileHint": "This is a new file. The AI wants to create it with the content below:",
     "noDiff": "No diff available.",
-    "contentPreview": "Content preview"
+    "contentPreview": "Content preview",
+    "pendingRequests_one": "pending request",
+    "pendingRequests_other": "pending requests"
   },
   "footer": {
     "typeYourMessage": "Type your message...",

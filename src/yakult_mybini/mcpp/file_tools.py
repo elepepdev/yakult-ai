@@ -137,11 +137,13 @@ def generate_diff(path: str, old_content: str, new_content: str) -> str:
     """Build a unified diff between the current file content and the new one."""
     old_lines = old_content.splitlines(keepends=True)
     new_lines = new_content.splitlines(keepends=True)
+    # Strip leading slash so headers render as a/usr/... not a//usr/...
+    header_path = path.lstrip("/")
     diff = difflib.unified_diff(
         old_lines,
         new_lines,
-        fromfile=f"a/{path}",
-        tofile=f"b/{path}",
+        fromfile=f"a/{header_path}",
+        tofile=f"b/{header_path}",
         n=3,
     )
     return "".join(diff)
@@ -151,7 +153,7 @@ def generate_diff(path: str, old_content: str, new_content: str) -> str:
 # Approval payloads
 # ---------------------------------------------------------------------------
 
-def build_approval_payload(tool_name: str, tool_input: Dict[str, Any]) -> Dict[str, Any]:
+async def build_approval_payload(tool_name: str, tool_input: Dict[str, Any]) -> Dict[str, Any]:
     """Build the payload sent to the frontend for a dangerous operation."""
     path = str(tool_input.get("path", "")).strip()
     payload: Dict[str, Any] = {
@@ -177,7 +179,10 @@ def build_approval_payload(tool_name: str, tool_input: Dict[str, Any]) -> Dict[s
         try:
             p = Path(path)
             payload["is_dir"] = p.is_dir()
-            payload["size"] = _dir_size(p) if p.is_dir() else (p.stat().st_size if p.exists() else 0)
+            if p.is_dir():
+                payload["size"] = await asyncio.to_thread(_dir_size, p)
+            else:
+                payload["size"] = p.stat().st_size if p.exists() else 0
         except Exception:
             payload["is_dir"] = False
             payload["size"] = 0
@@ -224,14 +229,14 @@ async def run_file_operation(
         return _do_read(path, tool_input)
 
     if tool_name == "write_file":
-        payload = build_approval_payload(tool_name, tool_input)
+        payload = await build_approval_payload(tool_name, tool_input)
         approved = await _request_approval(approval_callback, payload)
         if not approved:
             return True, "Operation cancelled: the user denied the file write."
         return _do_write(path, tool_input)
 
     if tool_name == "delete_file":
-        payload = build_approval_payload(tool_name, tool_input)
+        payload = await build_approval_payload(tool_name, tool_input)
         approved = await _request_approval(approval_callback, payload)
         if not approved:
             return True, "Operation cancelled: the user denied the file deletion."
@@ -241,14 +246,18 @@ async def run_file_operation(
 
 
 async def _request_approval(
-    callback: Optional[Callable[[Dict[str, Any]], Awaitable[bool]]],
+    callback: Optional[Callable[[Dict[str, Any]], Any]],
     payload: Dict[str, Any],
 ) -> bool:
+    """Invoke the approval callback, supporting both sync and async callables."""
     if not callback:
         logger.warning("No approval callback configured — denying file operation by default.")
         return False
     try:
-        return bool(await callback(payload))
+        result = callback(payload)
+        if asyncio.iscoroutine(result) or hasattr(result, "__await__"):
+            result = await result
+        return bool(result)
     except asyncio.TimeoutError:
         logger.warning("Approval request timed out — denying file operation.")
         return False

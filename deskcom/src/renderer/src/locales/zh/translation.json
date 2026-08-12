@@ -103,7 +103,9 @@
     "diffHint": "AI 想要修改此文件。请查看以下更改：",
     "newFileHint": "这是一个新文件。AI 想要用以下内容创建它：",
     "noDiff": "无可用差异。",
-    "contentPreview": "内容预览"
+    "contentPreview": "内容预览",
+    "pendingRequests_one": "个待处理请求",
+    "pendingRequests_other": "个待处理请求"
   },
   "footer": {
     "typeYourMessage": "输入您的消息...",

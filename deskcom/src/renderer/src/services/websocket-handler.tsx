@@ -390,6 +390,9 @@ function WebSocketHandler({ children }: { children: React.ReactNode }) {
       case 'hide-pet':
         getPlatform().hidePet();
         break;
+      case 'tool-approval-request':
+        // Handled by ApprovalFloatingWindow (via its own wsService subscription)
+        break;
       default:
         console.warn('Unknown message type:', message.type);
     }

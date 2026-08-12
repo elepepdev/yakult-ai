@@ -262,6 +262,7 @@ function ApprovalCard({ request, onRespond }: {
 }
 
 function ApprovalFloatingWindow() {
+  const { t } = useTranslation();
   const { current, pendingCount, respond } = useApprovalFloating();
   const { elementRef, isDragging, handleMouseDown } = useDraggable({
     componentId: 'approval-floating',
@@ -290,7 +291,7 @@ function ApprovalFloatingWindow() {
           rounded="md"
           py={1}
         >
-          +{pendingCount - 1} {pendingCount - 1 === 1 ? 'pending request' : 'pending requests'}
+          +{pendingCount - 1} {t('approval.pendingRequests', { count: pendingCount - 1 })}
         </Box>
       )}
     </Box>

@@ -44,6 +44,8 @@ openai==2.15.0
     # via yakult-mybini (pyproject.toml)
 pillow==12.3.0
     # via yakult-mybini (pyproject.toml)
+playwright==1.62.0
+    # via yakult-mybini (pyproject.toml)
 pre-commit==4.5.1
     # via yakult-mybini (pyproject.toml)
 psutil==7.2.2
@@ -52,7 +54,11 @@ pyautogui==0.9.54
     # via yakult-mybini (pyproject.toml)
 pydub==0.25.1
     # via yakult-mybini (pyproject.toml)
+pypdf==6.15.0
+    # via yakult-mybini (pyproject.toml)
 pysbd==0.3.4
+    # via yakult-mybini (pyproject.toml)
+python-docx==1.2.0
     # via yakult-mybini (pyproject.toml)
 pyttsx3==2.99
     # via yakult-mybini (pyproject.toml)

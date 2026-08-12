@@ -6,6 +6,7 @@ Tugasnya hanya: terima perintah → panggil tool → return hasil.
 Menggunakan LLM dengan rate limit tinggi (Groq) agar tool calls cepat dan murah.
 """
 
+import asyncio
 import uuid
 from typing import Dict, Any, List, Optional, Callable
 from dataclasses import dataclass, field

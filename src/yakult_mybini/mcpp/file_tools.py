@@ -153,9 +153,18 @@ def generate_diff(path: str, old_content: str, new_content: str) -> str:
 # Approval payloads
 # ---------------------------------------------------------------------------
 
+def _resolve_path(raw: str) -> str:
+    """Expand ~ and normalize a user-supplied path."""
+    raw = raw.strip()
+    if not raw:
+        return raw
+    expanded = os.path.expanduser(raw)
+    return os.path.abspath(expanded)
+
+
 async def build_approval_payload(tool_name: str, tool_input: Dict[str, Any]) -> Dict[str, Any]:
     """Build the payload sent to the frontend for a dangerous operation."""
-    path = str(tool_input.get("path", "")).strip()
+    path = _resolve_path(str(tool_input.get("path", "")))
     payload: Dict[str, Any] = {
         "tool_name": tool_name,
         "operation": "write" if tool_name == "write_file" else "delete",
@@ -221,9 +230,10 @@ async def run_file_operation(
     Returns:
         tuple: (is_error, text_content)
     """
-    path = str(tool_input.get("path", "")).strip() if isinstance(tool_input, dict) else ""
-    if not path:
+    raw_path = str(tool_input.get("path", "")).strip() if isinstance(tool_input, dict) else ""
+    if not raw_path:
         return True, "Error: 'path' is required."
+    path = _resolve_path(raw_path)
 
     if tool_name == "read_file":
         return _do_read(path, tool_input)

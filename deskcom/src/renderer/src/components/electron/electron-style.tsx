@@ -19,11 +19,15 @@ export const inputSubtitleStyles = {
     rounded: 'xl',
     overflow: 'hidden',
     boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-    bg: 'rgba(20, 20, 40, 0.65)',
+    // Frosted-glass: gradient sheen + darker tint so it reads as blur instead of
+    // plain see-through. backdrop-filter can't blur the desktop behind a
+    // transparent Electron window, so the tint does the heavy lifting.
+    bgImage: 'linear-gradient(180deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0.02) 40%, rgba(0,0,0,0.12) 100%)',
+    bgColor: 'rgba(20, 20, 40, 0.85)',
     backdropFilter: 'blur(18px)',
     WebkitBackdropFilter: 'blur(18px)',
     border: '1px solid',
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(255,255,255,0.22)',
     css: { WebkitUserSelect: 'none' },
   },
 

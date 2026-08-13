@@ -25,6 +25,29 @@ echo "Starting backend server..."
 uv run run_server.py &
 SERVER_PID=$!
 
+# ── Graceful shutdown ──
+# Saat Ctrl+C ditekan, SIGINT dikirim ke seluruh process group (script ini,
+# server, dan frontend). Server melakukan graceful shutdown sambil tetap
+# mencetak log; kalau script ini langsung keluar, prompt shell muncul di
+# tengah-tengah log shutdown. Jadi: tunggu server benar-benar selesai dulu
+# baru keluar, biar semua log tercetak sebelum prompt kembali.
+_stopping=false
+cleanup() {
+  if [ "$_stopping" = true ]; then
+    # Ctrl+C kedua: paksa berhenti
+    kill -9 "$SERVER_PID" 2>/dev/null
+    exit 130
+  fi
+  _stopping=true
+  echo ""
+  echo "Menghentikan server..."
+  kill "$FRONTEND_PID" 2>/dev/null || true
+  wait "$SERVER_PID" 2>/dev/null || true
+  echo "Server dihentikan."
+  exit 0
+}
+trap cleanup INT TERM
+
 # Wait for server to be ready
 echo "Waiting for server..."
 for i in $(seq 1 30); do
@@ -56,9 +79,9 @@ esac
 # Bring server logs to foreground
 echo ""
 echo "=== Server logs  ==="
-echo "Close this terminal to stop everything."
+echo "Tekan Ctrl+C untuk menghentikan semuanya."
 echo ""
 wait $SERVER_PID
 
-# Cleanup
-kill $FRONTEND_PID 2>/dev/null
+# Cleanup (normal exit, server berhenti sendiri)
+kill $FRONTEND_PID 2>/dev/null || true

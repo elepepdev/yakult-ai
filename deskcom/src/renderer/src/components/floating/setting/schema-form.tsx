@@ -52,6 +52,7 @@ function LeafField({ node, value, onChange }: { node: any; value: any; onChange:
           value={value !== undefined && value !== null ? [String(value)] : []}
           onValueChange={(e) => onChange(e.value[0])}
         >
+          <Select.HiddenSelect />
           <Select.Trigger css={inputStyles}>
             <Select.ValueText placeholder="Select..." />
           </Select.Trigger>
@@ -238,6 +239,7 @@ function ObjectSection({ node, values, onChange }: { node: any; values: Record<s
                 onValueChange={(e) => setSelected(e.value[0] ?? '')}
                 size="sm"
               >
+                <Select.HiddenSelect />
                 <Select.Trigger css={inputStyles}>
                   <Select.ValueText placeholder={t('settings.selectSection')} />
                 </Select.Trigger>

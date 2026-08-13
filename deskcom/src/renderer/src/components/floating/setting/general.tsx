@@ -91,6 +91,7 @@ function General() {
             i18n.changeLanguage(e.value[0]);
           }}
         >
+          <Select.HiddenSelect />
           <Select.Trigger css={selectTriggerStyles}>
             <Select.ValueText />
           </Select.Trigger>
@@ -133,6 +134,7 @@ function General() {
           value={[confName]}
           onValueChange={(e) => setConfName(e.value[0])}
         >
+          <Select.HiddenSelect />
           <Select.Trigger css={selectTriggerStyles}>
             <Select.ValueText />
           </Select.Trigger>
@@ -151,6 +153,7 @@ function General() {
           value={[uiTheme]}
           onValueChange={(e) => setUiTheme(e.value[0] as 'default' | 'sketch')}
         >
+          <Select.HiddenSelect />
           <Select.Trigger css={selectTriggerStyles}>
             <Select.ValueText />
           </Select.Trigger>
@@ -223,6 +226,7 @@ function General() {
           value={[gridSpec]}
           onValueChange={(e) => setGridSpec(e.value[0])}
         >
+          <Select.HiddenSelect />
           <Select.Trigger css={selectTriggerStyles}>
             <Select.ValueText />
           </Select.Trigger>

@@ -134,6 +134,7 @@ function TTS() {
                 value={currentVoice ? [String(currentVoice)] : []}
                 onValueChange={(e) => saveVoice(e.value[0])}
               >
+                <Select.HiddenSelect />
                 <Select.Trigger css={selectTriggerStyles}>
                   <Select.ValueText placeholder={t('settings.tts.selectVoice')} />
                 </Select.Trigger>

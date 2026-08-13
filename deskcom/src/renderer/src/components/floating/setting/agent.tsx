@@ -149,6 +149,7 @@ function Agent() {
           value={agentConfig?.llm_provider ? [agentConfig.llm_provider] : []}
           onValueChange={(e) => handleProviderChange(e.value[0])}
         >
+          <Select.HiddenSelect />
           <Select.Trigger css={selectTriggerStyles}>
             <Select.ValueText placeholder="Select provider..." />
           </Select.Trigger>
@@ -174,6 +175,7 @@ function Agent() {
               value={agentConfig?.current_model ? [agentConfig.current_model] : []}
               onValueChange={(e) => handleModelSelect(e.value[0])}
             >
+              <Select.HiddenSelect />
               <Select.Trigger css={selectTriggerStyles}>
                 <Select.ValueText placeholder="Select model..." />
               </Select.Trigger>
@@ -212,6 +214,7 @@ function Agent() {
           value={[aiMode]}
           onValueChange={(e) => handleAiModeChange(e.value[0])}
         >
+          <Select.HiddenSelect />
           <Select.Trigger css={selectTriggerStyles}>
             <Select.ValueText placeholder="Select AI mode..." />
           </Select.Trigger>

@@ -184,6 +184,38 @@ def parse_args():
     return parser.parse_args()
 
 
+async def _serve_and_cleanup(
+    server: WebSocketServer,
+    server_config,
+    console_log_level: str,
+) -> None:
+    """Run uvicorn inside our own event loop and clean up on shutdown.
+
+    Running the server in the same loop that created the MCP clients lets us
+    close them (which terminates the MCP server subprocesses) when the server
+    stops — so nothing keeps running (or logging) after Ctrl+C.
+    """
+    config = uvicorn.Config(
+        app=server.app,
+        host=server_config.host,
+        port=server_config.port,
+        log_level=console_log_level.lower(),
+        # Don't wait forever for websocket connections to close on Ctrl+C.
+        timeout_graceful_shutdown=5,
+    )
+    uvicorn_server = uvicorn.Server(config)
+    try:
+        await uvicorn_server.serve()
+    finally:
+        # Gracefully close shared resources (MCP clients, agent engine).
+        # This terminates MCP subprocesses so they don't keep logging.
+        try:
+            await server.default_context_cache.close()
+            logger.info("Service context closed.")
+        except Exception as e:
+            logger.warning(f"Error closing service context: {e}")
+
+
 @logger.catch
 def run(console_log_level: str, kill_port: bool = True):
     init_logger(console_log_level)
@@ -219,15 +251,11 @@ def run(console_log_level: str, kill_port: bool = True):
         logger.error(f"Failed to initialize server context: {e}")
         sys.exit(1)  # Exit if initialization fails
 
-    # Run the Uvicorn server
+    # Run the Uvicorn server in a single event loop so we can gracefully
+    # close shared resources (MCP subprocesses, agent engine) when it stops.
     logger.info(f"Starting server on {server_config.host}:{server_config.port}")
     try:
-        uvicorn.run(
-            app=server.app,
-            host=server_config.host,
-            port=server_config.port,
-            log_level=console_log_level.lower(),
-        )
+        asyncio.run(_serve_and_cleanup(server, server_config, console_log_level))
     except KeyboardInterrupt:
         pass
     finally:

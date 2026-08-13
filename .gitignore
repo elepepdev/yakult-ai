@@ -7,9 +7,6 @@ deskcom/node_modules/
 deskcom/dist/
 deskcom/out/
 
-# Old Open-LLM-VTuber-Web submodule checkout (superseded by deskcom)
-frontend/
-
 # ignore non-default background images
 /backgrounds/*
 !/backgrounds/README.md

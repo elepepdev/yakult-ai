@@ -41,9 +41,7 @@ def _auto_discover_vrm_models() -> int:
             model_dict = []
 
     # Build a set of already-registered VRM names
-    registered_names = {
-        e["name"] for e in model_dict if e.get("type") == "vrm"
-    }
+    registered_names = {e["name"] for e in model_dict if e.get("type") == "vrm"}
 
     # Collect .vrm files from the directory (flat only, skip subdirs)
     new_count = 0
@@ -103,7 +101,9 @@ character_config:
             try:
                 with open(config_filepath, "w", encoding="utf-8") as f:
                     f.write(config_yaml)
-                logger.info(f"Created config for auto-discovered VRM: {config_filepath}")
+                logger.info(
+                    f"Created config for auto-discovered VRM: {config_filepath}"
+                )
             except Exception as e:
                 logger.error(f"Failed to create config for {safe_name}: {e}")
 
@@ -219,9 +219,7 @@ def save_config(config: BaseModel, config_path: Union[str, Path]):
         config_path: Path to the YAML configuration file.
     """
     config_file = Path(config_path)
-    config_data = config.model_dump(
-        by_alias=True, exclude_none=True
-    )
+    config_data = config.model_dump(by_alias=True, exclude_none=True)
 
     try:
         with open(config_file, "w", encoding="utf-8") as f:

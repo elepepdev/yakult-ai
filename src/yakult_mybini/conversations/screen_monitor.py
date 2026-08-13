@@ -32,8 +32,7 @@ class ScreenMonitor:
         elapsed = time.time() - self._last_processed_time
         if elapsed < self.COOLDOWN_SECONDS:
             logger.debug(
-                f"Proactive speak skipped: {elapsed:.1f}s < "
-                f"{self.COOLDOWN_SECONDS}s"
+                f"Proactive speak skipped: {elapsed:.1f}s < {self.COOLDOWN_SECONDS}s"
             )
             return False
         return True
@@ -51,7 +50,7 @@ class ScreenMonitor:
         if self._thumb64 is None:
             self._thumb64 = thumb
             self._last_change_desc = (
-                "[Pertama kali melihat layar — " 
+                "[Pertama kali melihat layar — "
                 "awasi dan komentari jika ada yang menarik]"
             )
             logger.debug("ScreenMonitor: first frame")
@@ -68,8 +67,7 @@ class ScreenMonitor:
             )
         elif diff > 0.10:
             desc = (
-                f"[Ada perubahan di layar ({diff:.0%}) — "
-                "cek apakah ada yang menarik.]"
+                f"[Ada perubahan di layar ({diff:.0%}) — cek apakah ada yang menarik.]"
             )
         else:
             desc = (

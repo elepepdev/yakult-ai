@@ -9,12 +9,25 @@ from ..message_handler import message_handler
 from .types import WebSocketSend, BroadcastContext
 from .tts_manager import TTSTaskManager
 from ..agent.output_types import SentenceOutput, AudioOutput
-from ..agent.input_types import BatchInput, TextData, ImageData, FileData, TextSource, ImageSource
+from ..agent.input_types import (
+    BatchInput,
+    TextData,
+    ImageData,
+    FileData,
+    TextSource,
+    ImageSource,
+)
 from ..asr.asr_interface import ASRInterface
 from ..live2d_model import Live2dModel
 from ..tts.tts_interface import TTSInterface
 from ..utils.stream_audio import prepare_audio_payload
-from ..agentic.grid_state import is_grid_enabled, apply_grid_to_image, get_grid_spec, get_grid_rows, get_grid_cols, _col_label
+from ..agentic.grid_state import (
+    is_grid_enabled,
+    apply_grid_to_image,
+    get_grid_rows,
+    get_grid_cols,
+    _col_label,
+)
 
 
 # Convert class methods to standalone functions
@@ -29,7 +42,7 @@ def create_batch_input(
     image_width_hint = ""
 
     processed_images = []
-    for img in (images or []):
+    for img in images or []:
         data = img["data"]
         mime_type = img.get("mime_type", "image/jpeg")
         source = img.get("source", "screen")
@@ -41,6 +54,7 @@ def create_batch_input(
                 import base64
                 from PIL import Image
                 import io
+
                 b64 = data.split("base64,")[1]
                 pil_img = Image.open(io.BytesIO(base64.b64decode(b64)))
                 img_width, img_height = pil_img.size
@@ -59,7 +73,7 @@ def create_batch_input(
                 gc = get_grid_cols()
                 image_width_hint += (
                     f"\n[Grid overlay ACTIVE: {gc}x{gr}. "
-                    f"Cells labeled {_col_label(0)}1 – {_col_label(gc-1)}{gr}. "
+                    f"Cells labeled {_col_label(0)}1 – {_col_label(gc - 1)}{gr}. "
                     f"Use grid_cell='cellname' in click/type_text/x11_click – do NOT use raw x,y.]"
                 )
 
@@ -74,7 +88,7 @@ def create_batch_input(
     text_content = input_text + image_width_hint if image_width_hint else input_text
 
     processed_files = []
-    for f in (files or []):
+    for f in files or []:
         name = f.get("name", "")
         mime_type = f.get("mime_type", "application/octet-stream")
         data = f.get("data", "")
@@ -89,9 +103,7 @@ def create_batch_input(
                     )
                 )
         elif data:
-            processed_files.append(
-                FileData(name=name, data=data, mime_type=mime_type)
-            )
+            processed_files.append(FileData(name=name, data=data, mime_type=mime_type))
 
     return BatchInput(
         texts=[
@@ -243,9 +255,13 @@ async def finalize_conversation_turn(
             client_uid, "frontend-playback-complete", timeout=15.0
         )
         if not response:
-            logger.warning(f"No playback completion response from {client_uid} (timeout)")
+            logger.warning(
+                f"No playback completion response from {client_uid} (timeout)"
+            )
     except asyncio.TimeoutError:
-        logger.warning(f"Timeout waiting for frontend-playback-complete from {client_uid}")
+        logger.warning(
+            f"Timeout waiting for frontend-playback-complete from {client_uid}"
+        )
 
     await websocket_send(json.dumps({"type": "force-new-message"}))
 

@@ -73,7 +73,7 @@ async def handle_conversation_trigger(
         if context.last_proactive_response:
             user_input += (
                 "\n\n[Komentar terakhirmu tentang layar: "
-                f"\"{context.last_proactive_response}\" — "
+                f'"{context.last_proactive_response}" — '
                 "Jangan ngomongin hal yang sama lagi.]"
             )
 

@@ -113,8 +113,14 @@ _VRM_BLEND_TO_TAG: dict[str, str] = {
 
 # Expressions that are NOT emotions (visemes, blinks, etc.)
 _NON_EMOTION_EXPRESSIONS: set[str] = {
-    "aa", "ee", "ih", "oh", "ou",           # visemes
-    "blink", "blinkLeft", "blinkRight",       # auto-blink
+    "aa",
+    "ee",
+    "ih",
+    "oh",
+    "ou",  # visemes
+    "blink",
+    "blinkLeft",
+    "blinkRight",  # auto-blink
 }
 
 

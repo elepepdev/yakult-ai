@@ -70,7 +70,6 @@ __all__ = [
     "Config",
     "SystemConfig",
     "CharacterConfig",
-
     # LLM related classes
     "OpenAICompatibleConfig",
     "ClaudeConfig",

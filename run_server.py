@@ -44,7 +44,11 @@ def find_pids_on_port(port: int) -> list[int]:
 
         for conn in psutil.net_connections(kind="inet"):
             try:
-                if conn.status == psutil.CONN_LISTEN and conn.laddr.port == port and conn.pid:
+                if (
+                    conn.status == psutil.CONN_LISTEN
+                    and conn.laddr.port == port
+                    and conn.pid
+                ):
                     pids.add(conn.pid)
             except (AttributeError, OSError):
                 continue
@@ -92,7 +96,9 @@ def kill_process_on_port(port: int) -> None:
         except ProcessLookupError:
             logger.debug(f"PID {pid} already gone.")
         except PermissionError:
-            logger.error(f"No permission to stop PID {pid}. Port {port} will stay busy.")
+            logger.error(
+                f"No permission to stop PID {pid}. Port {port} will stay busy."
+            )
 
     # Wait for graceful exit, escalate to SIGKILL if needed
     for _ in range(10):
@@ -146,7 +152,7 @@ def init_logger(console_log_level: str = "INFO") -> None:
     )
 
 
-def check_frontend_submodule(lang='en'):
+def check_frontend_submodule(lang="en"):
     """
     Check if the frontend build is present. If not, warn the user to build it.
     The frontend lives in `deskcom/` (not a submodule) and is served from `deskcom/dist/web`.

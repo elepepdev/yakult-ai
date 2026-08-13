@@ -64,6 +64,8 @@ def _unmask(text: str) -> str:
     for ph, ch in _UNMASK_MAP.items():
         text = text.replace(ph, ch)
     return text
+
+
 ABBREVIATIONS = [
     "Mr.",
     "Mrs.",
@@ -489,7 +491,9 @@ class SentenceDivider:
 
                 # Process complete sentences in text before tag
                 if contains_end_punctuation(_mask_brackets(text_before_tag)):
-                    sentences, remaining_before = await self._segment_text(text_before_tag)
+                    sentences, remaining_before = await self._segment_text(
+                        text_before_tag
+                    )
                     for sentence in sentences:
                         if sentence.strip():
                             yield SentenceWithTags(

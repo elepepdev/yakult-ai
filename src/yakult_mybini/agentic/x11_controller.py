@@ -1,8 +1,5 @@
-import sys
-import os
-import subprocess
 import time
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, Any, List
 
 try:
     import Xlib
@@ -11,6 +8,7 @@ try:
     import Xlib.Xatom
     import Xlib.XK
     import Xlib.ext.xtest
+
     XLIB_AVAILABLE = True
 except ImportError:
     XLIB_AVAILABLE = False
@@ -28,7 +26,7 @@ class X11Controller:
         try:
             self._display = Xlib.display.Display()
             self._root = self._display.screen().root
-            self._utf8_atom = self._display.intern_atom('UTF8_STRING')
+            self._utf8_atom = self._display.intern_atom("UTF8_STRING")
         except Exception as e:
             print(f"X11 init failed: {e}")
             self._display = None
@@ -54,77 +52,80 @@ class X11Controller:
                     prop = window.get_full_property(atom, atom_type)
                     if prop and prop.value:
                         if atom_type == self._utf8_atom:
-                            return prop.value.decode('utf-8', errors='ignore')
+                            return prop.value.decode("utf-8", errors="ignore")
                         else:
-                            return prop.value.decode('latin-1', errors='ignore')
-                except:
+                            return prop.value.decode("latin-1", errors="ignore")
+                except Exception:
                     pass
-        except:
+        except Exception:
             pass
         return ""
 
-    def find_windows(self, name_contains: str = None, class_contains: str = None) -> List[Dict[str, Any]]:
+    def find_windows(
+        self, name_contains: str = None, class_contains: str = None
+    ) -> List[Dict[str, Any]]:
         """Find windows matching name or class"""
         if not self._display or not self._root:
             return [{"error": "X11 not available"}]
-        
+
         results = []
-        
+
         def traverse(window, depth=0):
             if depth > 10:
                 return
             try:
                 # Get window name
                 name = self._get_window_name(window)
-                
+
                 # Get window class
                 wm_class = ""
                 try:
                     class_prop = window.get_full_property(
-                        self._display.intern_atom("WM_CLASS"),
-                        Xlib.Xatom.STRING
+                        self._display.intern_atom("WM_CLASS"), Xlib.Xatom.STRING
                     )
                     if class_prop:
-                        wm_class = class_prop.value.decode('utf-8', errors='ignore')
-                except:
+                        wm_class = class_prop.value.decode("utf-8", errors="ignore")
+                except Exception:
                     pass
-                
+
                 # Get geometry
                 try:
                     geom = window.get_geometry()
                     x, y, w, h = geom.x, geom.y, geom.width, geom.height
-                except:
+                except Exception:
                     x, y, w, h = 0, 0, 0, 0
-                
+
                 # Check match
                 match = True
                 if name_contains and name_contains.lower() not in name.lower():
                     match = False
                 if class_contains and class_contains.lower() not in wm_class.lower():
                     match = False
-                
+
                 if match and w > 0 and h > 0:
-                    results.append({
-                        "id": window.id,
-                        "name": name,
-                        "class": wm_class,
-                        "x": x,
-                        "y": y,
-                        "width": w,
-                        "height": h,
-                    })
-                
+                    results.append(
+                        {
+                            "id": window.id,
+                            "name": name,
+                            "class": wm_class,
+                            "x": x,
+                            "y": y,
+                            "width": w,
+                            "height": h,
+                        }
+                    )
+
                 # Traverse children
                 try:
                     children = window.query_tree().children
                     for child in children:
                         traverse(child, depth + 1)
-                except:
+                except Exception:
                     pass
-                    
+
             except Exception:
                 pass
-        
+
         traverse(self._root)
         return results
 
@@ -133,7 +134,7 @@ class X11Controller:
         if not self._display:
             return None
         try:
-            window = self._display.create_resource_object('window', window_id)
+            window = self._display.create_resource_object("window", window_id)
             geom = window.get_geometry()
             # Get absolute position
             translated = window.translate_coords(self._root, 0, 0)
@@ -156,7 +157,9 @@ class X11Controller:
         except Exception:
             return (0, 0)
 
-    def _scale_coords(self, x: int, y: int, image_width: int = None, image_height: int = None) -> tuple:
+    def _scale_coords(
+        self, x: int, y: int, image_width: int = None, image_height: int = None
+    ) -> tuple:
         """Map AI-supplied image-space coordinates to real X screen coords.
 
         Returns clamped ints in screen-pixel space.
@@ -194,11 +197,26 @@ class X11Controller:
         try:
             if grid_cell:
                 if not image_width or not image_height:
-                    return {"success": False, "error": "grid_cell requires image_width and image_height"}
+                    return {
+                        "success": False,
+                        "error": "grid_cell requires image_width and image_height",
+                    }
                 from .grid_overlay import cell_to_pixel
-                coords = cell_to_pixel(grid_cell, image_width, image_height, grid_rows, grid_cols, cell_x=cell_x, cell_y=cell_y)
+
+                coords = cell_to_pixel(
+                    grid_cell,
+                    image_width,
+                    image_height,
+                    grid_rows,
+                    grid_cols,
+                    cell_x=cell_x,
+                    cell_y=cell_y,
+                )
                 if coords is None:
-                    return {"success": False, "error": f"Invalid grid_cell: {grid_cell}"}
+                    return {
+                        "success": False,
+                        "error": f"Invalid grid_cell: {grid_cell}",
+                    }
                 x, y = coords
             elif x is None or y is None:
                 return {"success": False, "error": "x and y (or grid_cell) required"}
@@ -223,17 +241,19 @@ class X11Controller:
         geom = self.get_window_geometry(window_id)
         if not geom:
             return {"success": False, "error": "Could not get window geometry"}
-        
+
         center_x = geom["x"] + geom["width"] // 2
         center_y = geom["y"] + geom["height"] // 2
         return self.click_at(center_x, center_y)
 
-    def click_window_relative(self, window_id: int, rel_x: float, rel_y: float) -> Dict[str, Any]:
+    def click_window_relative(
+        self, window_id: int, rel_x: float, rel_y: float
+    ) -> Dict[str, Any]:
         """Click at relative position within window (0.0-1.0)"""
         geom = self.get_window_geometry(window_id)
         if not geom:
             return {"success": False, "error": "Could not get window geometry"}
-        
+
         x = geom["x"] + int(geom["width"] * rel_x)
         y = geom["y"] + int(geom["height"] * rel_y)
         return self.click_at(x, y)
@@ -266,41 +286,61 @@ class X11Controller:
             # Handle modifier keys
             key_lower = key.lower()
             modifiers = []
-            
-            if key_lower.startswith('ctrl') or key_lower.startswith('control'):
+
+            if key_lower.startswith("ctrl") or key_lower.startswith("control"):
                 modifiers.append(Xlib.X.ControlMask)
-                key = key_lower.replace('ctrl', '').replace('control', '').replace('+', '').strip()
-            if key_lower.startswith('alt'):
+                key = (
+                    key_lower.replace("ctrl", "")
+                    .replace("control", "")
+                    .replace("+", "")
+                    .strip()
+                )
+            if key_lower.startswith("alt"):
                 modifiers.append(Xlib.X.Mod1Mask)
-                key = key_lower.replace('alt', '').replace('+', '').strip()
-            if key_lower.startswith('shift'):
+                key = key_lower.replace("alt", "").replace("+", "").strip()
+            if key_lower.startswith("shift"):
                 modifiers.append(Xlib.X.ShiftMask)
-                key = key_lower.replace('shift', '').replace('+', '').strip()
-            if key_lower.startswith('super') or key_lower.startswith('meta'):
+                key = key_lower.replace("shift", "").replace("+", "").strip()
+            if key_lower.startswith("super") or key_lower.startswith("meta"):
                 modifiers.append(Xlib.X.Mod4Mask)
-                key = key_lower.replace('super', '').replace('meta', '').replace('+', '').strip()
-            
+                key = (
+                    key_lower.replace("super", "")
+                    .replace("meta", "")
+                    .replace("+", "")
+                    .strip()
+                )
+
             if not key:
                 return {"success": False, "error": "No key specified"}
-            
+
             keysym = Xlib.XK.string_to_keysym(key)
             if keysym == Xlib.XK.NoSymbol:
                 # Try common aliases
                 key_aliases = {
-                    'enter': 'Return', 'esc': 'Escape', 'escape': 'Escape',
-                    'space': 'space', 'tab': 'Tab', 'backspace': 'BackSpace',
-                    'delete': 'Delete', 'up': 'Up', 'down': 'Down',
-                    'left': 'Left', 'right': 'Right', 'home': 'Home',
-                    'end': 'End', 'pageup': 'Page_Up', 'pagedown': 'Page_Down',
+                    "enter": "Return",
+                    "esc": "Escape",
+                    "escape": "Escape",
+                    "space": "space",
+                    "tab": "Tab",
+                    "backspace": "BackSpace",
+                    "delete": "Delete",
+                    "up": "Up",
+                    "down": "Down",
+                    "left": "Left",
+                    "right": "Right",
+                    "home": "Home",
+                    "end": "End",
+                    "pageup": "Page_Up",
+                    "pagedown": "Page_Down",
                 }
                 key = key_aliases.get(key_lower, key)
                 keysym = Xlib.XK.string_to_keysym(key)
-            
+
             if keysym == Xlib.XK.NoSymbol:
                 return {"success": False, "error": f"Unknown key: {key}"}
-            
+
             keycode = self._display.keysym_to_keycode(keysym)
-            
+
             # Press modifiers
             for mod in modifiers:
                 mod_keysym = {
@@ -311,15 +351,17 @@ class X11Controller:
                 }.get(mod)
                 if mod_keysym:
                     mod_keycode = self._display.keysym_to_keycode(mod_keysym)
-                    Xlib.ext.xtest.fake_input(self._display, Xlib.X.KeyPress, mod_keycode)
-            
+                    Xlib.ext.xtest.fake_input(
+                        self._display, Xlib.X.KeyPress, mod_keycode
+                    )
+
             # Press main key
             Xlib.ext.xtest.fake_input(self._display, Xlib.X.KeyPress, keycode)
             self._display.sync()
             time.sleep(0.05)
             Xlib.ext.xtest.fake_input(self._display, Xlib.X.KeyRelease, keycode)
             self._display.sync()
-            
+
             # Release modifiers
             for mod in reversed(modifiers):
                 mod_keysym = {
@@ -330,8 +372,10 @@ class X11Controller:
                 }.get(mod)
                 if mod_keysym:
                     mod_keycode = self._display.keysym_to_keycode(mod_keysym)
-                    Xlib.ext.xtest.fake_input(self._display, Xlib.X.KeyRelease, mod_keycode)
-            
+                    Xlib.ext.xtest.fake_input(
+                        self._display, Xlib.X.KeyRelease, mod_keycode
+                    )
+
             self._display.sync()
             return {"success": True}
         except Exception as e:
@@ -348,17 +392,22 @@ class X11Controller:
                 keysym = Xlib.XK.string_to_keysym(key_lower)
                 if keysym == Xlib.XK.NoSymbol:
                     key_aliases = {
-                        'ctrl': 'Control_L', 'control': 'Control_L',
-                        'alt': 'Alt_L', 'shift': 'Shift_L',
-                        'super': 'Super_L', 'meta': 'Meta_L',
-                        'enter': 'Return', 'esc': 'Escape',
-                        'space': 'space', 'tab': 'Tab',
+                        "ctrl": "Control_L",
+                        "control": "Control_L",
+                        "alt": "Alt_L",
+                        "shift": "Shift_L",
+                        "super": "Super_L",
+                        "meta": "Meta_L",
+                        "enter": "Return",
+                        "esc": "Escape",
+                        "space": "space",
+                        "tab": "Tab",
                     }
                     key = key_aliases.get(key_lower, key)
                     keysym = Xlib.XK.string_to_keysym(key)
                 if keysym != Xlib.XK.NoSymbol:
                     keycodes.append(self._display.keysym_to_keycode(keysym))
-            
+
             # Press all keys
             for kc in keycodes:
                 Xlib.ext.xtest.fake_input(self._display, Xlib.X.KeyPress, kc)
@@ -381,15 +430,11 @@ class X11Controller:
             prop = self._root.get_full_property(atom, Xlib.Xatom.WINDOW)
             if prop and prop.value:
                 window_id = prop.value[0]
-                window = self._display.create_resource_object('window', window_id)
+                window = self._display.create_resource_object("window", window_id)
                 # Get name
                 name = self._get_window_name(window)
                 geom = self.get_window_geometry(window_id)
-                return {
-                    "id": window_id,
-                    "name": name,
-                    "geometry": geom
-                }
+                return {"id": window_id, "name": name, "geometry": geom}
         except Exception as e:
             return {"error": str(e)}
         return {"error": "No active window"}
@@ -399,9 +444,11 @@ class X11Controller:
         if not self._display:
             return {"success": False, "error": "X11 not available"}
         try:
-            window = self._display.create_resource_object('window', window_id)
+            window = self._display.create_resource_object("window", window_id)
             # Set input focus
-            self._display.set_input_focus(window, Xlib.X.RevertToParent, Xlib.X.CurrentTime)
+            self._display.set_input_focus(
+                window, Xlib.X.RevertToParent, Xlib.X.CurrentTime
+            )
             # Raise window using configure
             window.configure(stack_mode=Xlib.X.Above)
             self._display.sync()
@@ -414,7 +461,7 @@ class X11Controller:
         if not self._display:
             return {"success": False, "error": "X11 not available"}
         try:
-            window = self._display.create_resource_object('window', window_id)
+            window = self._display.create_resource_object("window", window_id)
             atom = self._display.intern_atom("_NET_CLOSE_WINDOW")
             wm_protocols = self._display.intern_atom("WM_PROTOCOLS")
             wm_delete_window = self._display.intern_atom("WM_DELETE_WINDOW")
@@ -424,12 +471,15 @@ class X11Controller:
                 client_msg = Xlib.protocol.event.ClientMessage(
                     window=window,
                     client_type=atom,
-                    data=(32, [Xlib.X.CurrentTime, 0, 0, 0, 0])
+                    data=(32, [Xlib.X.CurrentTime, 0, 0, 0, 0]),
                 )
                 mask = Xlib.X.SubstructureRedirectMask | Xlib.X.SubstructureNotifyMask
                 self._root.send_event(client_msg, event_mask=mask)
                 self._display.sync()
-                return {"success": True, "message": f"Sent close request to window {window_id}"}
+                return {
+                    "success": True,
+                    "message": f"Sent close request to window {window_id}",
+                }
             except Exception:
                 pass
 
@@ -438,11 +488,14 @@ class X11Controller:
                 client_msg = Xlib.protocol.event.ClientMessage(
                     window=window,
                     client_type=wm_protocols,
-                    data=(32, [wm_delete_window, Xlib.X.CurrentTime, 0, 0, 0])
+                    data=(32, [wm_delete_window, Xlib.X.CurrentTime, 0, 0, 0]),
                 )
                 self._root.send_event(client_msg, event_mask=mask)
                 self._display.sync()
-                return {"success": True, "message": f"Sent WM_DELETE_WINDOW to window {window_id}"}
+                return {
+                    "success": True,
+                    "message": f"Sent WM_DELETE_WINDOW to window {window_id}",
+                }
             except Exception:
                 pass
 
@@ -456,6 +509,7 @@ class X11Controller:
 
 
 _x11_controller = None
+
 
 def get_x11_controller() -> X11Controller:
     global _x11_controller

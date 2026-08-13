@@ -247,23 +247,6 @@
       "desktop-controller": ["store_memory"]
     }
   },
-  "osu": {
-    "description": "OSU! beatmap dan gameplay",
-    "patterns": [
-      "osu",
-      "main osu",
-      "play osu",
-      "beatmap",
-      "list (osu|songs|maps)",
-      "daftar (osu|lagu|map)",
-      "maen osu",
-      "osu map"
-    ],
-    "keywords": ["osu", "beatmap", "map", "song", "main", "play"],
-    "tools": {
-      "desktop-controller": ["list_osu_maps", "play_osu_beatmap"]
-    }
-  },
   "grid": {
     "description": "Grid overlay untuk screenshot",
     "patterns": [

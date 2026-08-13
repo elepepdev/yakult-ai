@@ -8,7 +8,11 @@ Split Agent v2 — Multi-tool-group routing.
 Flow: User → Route → ToolGroup → results → Persona Agent → response
 """
 
+import asyncio
+import time
+from datetime import datetime, timezone
 from typing import AsyncIterator, List, Dict, Any, Optional, Callable
+
 from loguru import logger
 
 from .agent_interface import AgentInterface
@@ -16,7 +20,7 @@ from .basic_memory_agent import BasicMemoryAgent
 from .tool_agent import ToolAgent, ToolResult
 from ..input_types import BatchInput
 from ..output_types import SentenceOutput, DisplayText
-from ..tool_groups import get_default_groups, filter_tool_definitions, ROUTER_SYSTEM
+from ..tool_groups import get_default_groups, ROUTER_SYSTEM
 from ...mcpp.tool_manager import ToolManager
 
 
@@ -187,13 +191,19 @@ class SplitAgent(AgentInterface):
     ) -> ToolResult:
         """Run a ToolAgent for a specific tool group with minimal prompt."""
         group = self._tool_groups[group_name]
-        logger.info(f"SplitAgent: running group '{group_name}' ({len(group.tool_names)} tools)")
+        logger.info(
+            f"SplitAgent: running group '{group_name}' ({len(group.tool_names)} tools)"
+        )
 
         # Filter tool definitions to only this group
-        tools = self._tool_manager.get_filtered_tools(
-            "OpenAI",
-            group.tool_names,
-        ) if self._tool_manager else []
+        tools = (
+            self._tool_manager.get_filtered_tools(
+                "OpenAI",
+                group.tool_names,
+            )
+            if self._tool_manager
+            else []
+        )
 
         if not tools:
             logger.warning(f"SplitAgent: no tools found for group '{group_name}'")

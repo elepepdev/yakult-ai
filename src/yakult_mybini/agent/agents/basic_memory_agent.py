@@ -65,7 +65,6 @@ class BasicMemoryAgent(AgentInterface):
         simple_tool_names: Optional[List[str]] = None,
         specialist_llm: Optional[StatelessLLMInterface] = None,
         tool_groups: Optional[Dict[str, Any]] = None,
-
     ):
         """Initialize agent with LLM and configuration.
 
@@ -87,7 +86,9 @@ class BasicMemoryAgent(AgentInterface):
         """
         super().__init__()
         self._memory = []
-        self._max_history_messages = 40  # sliding window: keep last 40 messages (~20 exchanges)
+        self._max_history_messages = (
+            40  # sliding window: keep last 40 messages (~20 exchanges)
+        )
         self._conf_uid = ""
         self._live2d_model = live2d_model
         self._tts_preprocessor_config = tts_preprocessor_config
@@ -142,7 +143,8 @@ class BasicMemoryAgent(AgentInterface):
         if self._specialist_llm and self._formatted_tools_openai:
             if self._simple_tool_names:
                 filtered = [
-                    t for t in self._formatted_tools_openai
+                    t
+                    for t in self._formatted_tools_openai
                     if t.get("function", {}).get("name") in self._simple_tool_names
                 ]
             else:
@@ -248,8 +250,10 @@ class BasicMemoryAgent(AgentInterface):
         # Sliding window: truncate oldest messages if over limit
         if len(self._memory) > self._max_history_messages:
             overflow = len(self._memory) - self._max_history_messages
-            logger.debug(f"Memory sliding window: truncating {overflow} oldest messages")
-            self._memory = self._memory[-self._max_history_messages:]
+            logger.debug(
+                f"Memory sliding window: truncating {overflow} oldest messages"
+            )
+            self._memory = self._memory[-self._max_history_messages :]
 
     def get_recent_context(self, n: int = 3) -> List[Dict[str, Any]]:
         """Return the last N message exchanges from memory.
@@ -260,7 +264,7 @@ class BasicMemoryAgent(AgentInterface):
         Returns:
             List of message dicts with 'role' and 'content' keys.
         """
-        recent = self._memory[-n * 2:] if n > 0 else []
+        recent = self._memory[-n * 2 :] if n > 0 else []
         logger.debug(f"get_recent_context({n}): returning {len(recent)} messages")
         return recent
 
@@ -287,8 +291,10 @@ class BasicMemoryAgent(AgentInterface):
         # Sliding window: truncate oldest messages if over limit
         if len(self._memory) > self._max_history_messages:
             overflow = len(self._memory) - self._max_history_messages
-            logger.debug(f"History sliding window: truncating {overflow} oldest messages")
-            self._memory = self._memory[-self._max_history_messages:]
+            logger.debug(
+                f"History sliding window: truncating {overflow} oldest messages"
+            )
+            self._memory = self._memory[-self._max_history_messages :]
 
     def handle_interrupt(self, heard_response: str) -> None:
         """Handle user interruption."""
@@ -320,7 +326,9 @@ class BasicMemoryAgent(AgentInterface):
         )
         logger.info(f"Handled interrupt with role '{interrupt_role}'.")
 
-    def _to_text_prompt(self, input_data: BatchInput, include_files: bool = True) -> str:
+    def _to_text_prompt(
+        self, input_data: BatchInput, include_files: bool = True
+    ) -> str:
         """Format input data to text prompt."""
         message_parts = []
 
@@ -409,7 +417,8 @@ class BasicMemoryAgent(AgentInterface):
 
             if not skip_memory:
                 self._add_message(
-                    memory_prompt if memory_prompt else "[User provided image(s)]", "user"
+                    memory_prompt if memory_prompt else "[User provided image(s)]",
+                    "user",
                 )
 
         return messages
@@ -420,7 +429,7 @@ class BasicMemoryAgent(AgentInterface):
 
         Returns a list of ToolCallObject instances.
         """
-        pattern = re.compile(r'\[(\w+)\(([^)]*)\)\]')
+        pattern = re.compile(r"\[(\w+)\(([^)]*)\)\]")
         results: List[ToolCallObject] = []
         for match in pattern.finditer(text):
             tool_name = match.group(1)
@@ -429,18 +438,18 @@ class BasicMemoryAgent(AgentInterface):
             if args_str:
                 try:
                     lexer = shlex.shlex(args_str, posix=True)
-                    lexer.whitespace = ','
+                    lexer.whitespace = ","
                     lexer.whitespace_split = True
                     tokens = list(lexer)
                     for token in tokens:
-                        if '=' in token:
-                            k, _, v = token.partition('=')
+                        if "=" in token:
+                            k, _, v = token.partition("=")
                             k = k.strip()
                             v = v.strip()
-                            if len(v) >= 2 and v[0] == v[-1] and v[0] in '"\'':
+                            if len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'":
                                 v = v[1:-1]
                             try:
-                                if '.' in v:
+                                if "." in v:
                                     v = float(v)
                                 else:
                                     v = int(v)
@@ -448,7 +457,9 @@ class BasicMemoryAgent(AgentInterface):
                                 pass
                             args[k] = v
                 except ValueError:
-                    logger.warning(f"Failed to parse bracket tool arguments: {args_str}")
+                    logger.warning(
+                        f"Failed to parse bracket tool arguments: {args_str}"
+                    )
                     continue
             tc = ToolCallObject(
                 id=f"bracket_{uuid.uuid4().hex[:8]}",
@@ -464,8 +475,8 @@ class BasicMemoryAgent(AgentInterface):
     @staticmethod
     def _strip_bracket_tool_calls(text: str) -> str:
         """Remove [tool_name(...)] patterns from text."""
-        pattern = re.compile(r'\s*\[(\w+)\(([^)]*)\)\]\s*')
-        return pattern.sub(' ', text).strip()
+        pattern = re.compile(r"\s*\[(\w+)\(([^)]*)\)\]\s*")
+        return pattern.sub(" ", text).strip()
 
     async def _claude_tool_interaction_loop(
         self,
@@ -483,7 +494,9 @@ class BasicMemoryAgent(AgentInterface):
         while True:
             self._tool_round_counter += 1
             if self._tool_round_counter > self.MAX_TOOL_ROUNDS:
-                logger.warning(f"Tool interaction loop exceeded {self.MAX_TOOL_ROUNDS} rounds, stopping.")
+                logger.warning(
+                    f"Tool interaction loop exceeded {self.MAX_TOOL_ROUNDS} rounds, stopping."
+                )
                 yield "[System: Maximum tool call rounds reached. Please summarize.]"
                 return
             stream = self._llm.chat_completion(messages, self._system, tools=tools)
@@ -508,7 +521,9 @@ class BasicMemoryAgent(AgentInterface):
                         )
                     else:
                         current_assistant_message_content[-1]["text"] += text
-                elif isinstance(event, dict) and event.get("type") == "tool_use_complete":
+                elif (
+                    isinstance(event, dict) and event.get("type") == "tool_use_complete"
+                ):
                     tool_call_data = event["data"]
                     logger.info(
                         f"Tool request: {tool_call_data['name']} (ID: {tool_call_data['id']})"
@@ -596,7 +611,9 @@ class BasicMemoryAgent(AgentInterface):
 
                         tool_results_for_llm = []
                         if not self._tool_executor:
-                            logger.error("Claude Tool interaction requested but ToolExecutor is not available.")
+                            logger.error(
+                                "Claude Tool interaction requested but ToolExecutor is not available."
+                            )
                             yield "[Error: ToolExecutor not configured for bracket tool calls]"
                             return
 
@@ -613,10 +630,14 @@ class BasicMemoryAgent(AgentInterface):
                                 else:
                                     yield update
                         except StopAsyncIteration:
-                            logger.warning("Tool executor finished without final results marker.")
+                            logger.warning(
+                                "Tool executor finished without final results marker."
+                            )
 
                         if tool_results_for_llm:
-                            messages.append({"role": "user", "content": tool_results_for_llm})
+                            messages.append(
+                                {"role": "user", "content": tool_results_for_llm}
+                            )
                         continue
                     else:
                         self._add_message(current_turn_text, "assistant")
@@ -636,7 +657,10 @@ class BasicMemoryAgent(AgentInterface):
             return {"role": "system", "content": content}
         except Exception as e:
             logger.warning(f"Failed to load agentic reflection prompt: {e}")
-            return {"role": "system", "content": "[System: If you need to call tools, call them now. Otherwise, do not respond.]"}
+            return {
+                "role": "system",
+                "content": "[System: If you need to call tools, call them now. Otherwise, do not respond.]",
+            }
 
     async def _openai_tool_interaction_loop(
         self,
@@ -654,7 +678,9 @@ class BasicMemoryAgent(AgentInterface):
         while True:
             self._tool_round_counter += 1
             if self._tool_round_counter > self.MAX_TOOL_ROUNDS:
-                logger.warning(f"Tool interaction loop exceeded {self.MAX_TOOL_ROUNDS} rounds, stopping.")
+                logger.warning(
+                    f"Tool interaction loop exceeded {self.MAX_TOOL_ROUNDS} rounds, stopping."
+                )
                 yield "[System: Maximum tool call rounds reached. Please summarize.]"
                 return
             if self.prompt_mode_flag:
@@ -740,7 +766,9 @@ class BasicMemoryAgent(AgentInterface):
                                                 depth -= 1
                                                 if depth == 0:
                                                     try:
-                                                        obj = json.loads(raw[pos:i+1])
+                                                        obj = json.loads(
+                                                            raw[pos : i + 1]
+                                                        )
                                                         if isinstance(obj, dict):
                                                             merged.update(obj)
                                                     except json.JSONDecodeError:
@@ -753,7 +781,9 @@ class BasicMemoryAgent(AgentInterface):
                                         pos += 1
                                 if merged:
                                     tc.function.arguments = json.dumps(merged)
-                                    logger.info(f"Repaired arguments for '{tc.function.name}': {tc.function.arguments}")
+                                    logger.info(
+                                        f"Repaired arguments for '{tc.function.name}': {tc.function.arguments}"
+                                    )
                             tc_dict = {
                                 "id": tc_id,
                                 "type": tc.type,
@@ -843,11 +873,13 @@ class BasicMemoryAgent(AgentInterface):
 
                 # Split summon_specialist calls from regular tool calls
                 summon_calls = [
-                    tc for tc in pending_tool_calls
+                    tc
+                    for tc in pending_tool_calls
                     if tc.function.name == "summon_specialist"
                 ]
                 regular_calls = [
-                    tc for tc in pending_tool_calls
+                    tc
+                    for tc in pending_tool_calls
                     if tc.function.name != "summon_specialist"
                 ]
 
@@ -878,7 +910,9 @@ class BasicMemoryAgent(AgentInterface):
                             status_queue.put_nowait(status_dict)
 
                         async def _run_specialist_task():
-                            res = await self._handle_summon_specialist(tc, on_status_update=_on_sub_status)
+                            res = await self._handle_summon_specialist(
+                                tc, on_status_update=_on_sub_status
+                            )
                             await status_queue.put(None)
                             return res
 
@@ -893,7 +927,7 @@ class BasicMemoryAgent(AgentInterface):
                         statuses, tool_result = await task
                         for s in statuses:
                             yield s
-                        
+
                         yield {
                             "type": "tool_call_status",
                             "tool_id": tc.id,
@@ -1036,9 +1070,7 @@ class BasicMemoryAgent(AgentInterface):
             }
 
         group = self._tool_groups[group_name]
-        logger.info(
-            f"Summoning specialist '{group_name}' for: {request[:120]}..."
-        )
+        logger.info(f"Summoning specialist '{group_name}' for: {request[:120]}...")
 
         filtered_tools = (
             self._tool_manager.get_filtered_tools("OpenAI", group.tool_names)
@@ -1081,7 +1113,9 @@ class BasicMemoryAgent(AgentInterface):
                                 summaries.append(item["text"][:2000])
                     elif c:
                         summaries.append(str(c)[:2000])
-            content = "\n".join(summaries) if summaries else "Task completed (no output)"
+            content = (
+                "\n".join(summaries) if summaries else "Task completed (no output)"
+            )
         else:
             content = "Specialist: Task completed successfully."
 
@@ -1146,21 +1180,28 @@ class BasicMemoryAgent(AgentInterface):
                     # Summarize tool results into a user-like message
                     tool_summaries = []
                     for tr in tool_result.tool_results:
-                        content = tr.get("content", "") if isinstance(tr, dict) else str(tr)
+                        content = (
+                            tr.get("content", "") if isinstance(tr, dict) else str(tr)
+                        )
                         if isinstance(content, str) and content:
                             tool_summaries.append(content[:2000])
                         elif isinstance(content, list):
                             for item in content:
-                                if isinstance(item, dict) and item.get("type") == "text":
+                                if (
+                                    isinstance(item, dict)
+                                    and item.get("type") == "text"
+                                ):
                                     tool_summaries.append(item["text"][:2000])
 
                     if tool_summaries:
                         combined = "\n".join(tool_summaries)
                         # Inject as a user message (tool results context)
-                        messages.append({
-                            "role": "user",
-                            "content": f"[Your tool assistant executed tools and got these results:]\n{combined}"
-                        })
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": f"[Your tool assistant executed tools and got these results:]\n{combined}",
+                            }
+                        )
                         logger.info(
                             f"Dual-agent: Injected {len(combined)} chars of tool results into persona LLM context"
                         )
@@ -1173,8 +1214,9 @@ class BasicMemoryAgent(AgentInterface):
                 # Step 3: Persona LLM generates response (NO tools in system prompt)
                 logger.info("Dual-agent: Persona LLM generating response")
                 token_stream = self._llm.chat_completion(
-                    messages, self._system,
-                    tools=None  # NO tools for persona LLM
+                    messages,
+                    self._system,
+                    tools=None,  # NO tools for persona LLM
                 )
                 complete_response = ""
                 async for event in token_stream:
@@ -1189,8 +1231,12 @@ class BasicMemoryAgent(AgentInterface):
                         yield text_chunk
                         complete_response += text_chunk
                         # On first chunk, mark that tools were used in the response
-                        if tool_result.tool_was_called and len(complete_response) == len(text_chunk):
-                            logger.debug("Dual-agent: First response chunk from persona LLM (tools were used)")
+                        if tool_result.tool_was_called and len(
+                            complete_response
+                        ) == len(text_chunk):
+                            logger.debug(
+                                "Dual-agent: First response chunk from persona LLM (tools were used)"
+                            )
 
                 if complete_response:
                     self._add_message(complete_response, "assistant")
@@ -1284,7 +1330,9 @@ class BasicMemoryAgent(AgentInterface):
             if extra_prompts:
                 combined = "\n\n".join(extra_prompts)
                 self.set_system(f"{original_system}\n\n{combined}")
-                logger.debug(f"Injected memory+todo ({len(combined)} chars) into system prompt.")
+                logger.debug(
+                    f"Injected memory+todo ({len(combined)} chars) into system prompt."
+                )
             chat_func_decorated = self._chat_function_factory()
             async for output in chat_func_decorated(input_data):
                 yield output

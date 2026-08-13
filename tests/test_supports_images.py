@@ -12,7 +12,10 @@ def test_strip_image_parts_replaces_image_url_with_text():
             "role": "user",
             "content": [
                 {"type": "text", "text": "halo"},
-                {"type": "image_url", "image_url": {"url": "data:image/png;base64,xxx"}},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": "data:image/png;base64,xxx"},
+                },
             ],
         },
         {"role": "assistant", "content": "hai"},
@@ -20,7 +23,9 @@ def test_strip_image_parts_replaces_image_url_with_text():
     out = _strip_image_parts(messages)
     parts = out[0]["content"]
     assert all(p.get("type") != "image_url" for p in parts)
-    assert any("does not support images" in p["text"] for p in parts if p.get("type") == "text")
+    assert any(
+        "does not support images" in p["text"] for p in parts if p.get("type") == "text"
+    )
 
 
 def test_strip_image_parts_keeps_text_and_plain_messages():

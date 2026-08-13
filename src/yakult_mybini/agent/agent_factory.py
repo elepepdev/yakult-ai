@@ -72,7 +72,12 @@ class AgentFactory:
             subagent_mode: str = basic_memory_settings.get("subagent_mode", "none")
             subagent_configs: Optional[dict] = basic_memory_settings.get("subagent")
 
-            if subagent_mode == "split" and subagent_configs and tool_manager and tool_executor:
+            if (
+                subagent_mode == "split"
+                and subagent_configs
+                and tool_manager
+                and tool_executor
+            ):
                 # Use tool_agent_system from kwargs if provided, else fallback
                 tool_agent_system = kwargs.get(
                     "tool_agent_system",
@@ -105,9 +110,7 @@ class AgentFactory:
                     specialist_llm = StatelessLLMFactory.create_llm(
                         llm_provider=tool_llm_provider, **tool_llm_cfg
                     )
-                    logger.info(
-                        f"Hybrid mode: specialist LLM = {tool_llm_provider}"
-                    )
+                    logger.info(f"Hybrid mode: specialist LLM = {tool_llm_provider}")
                 else:
                     logger.warning(
                         "Hybrid mode: tool_llm_provider not configured, "
@@ -124,9 +127,7 @@ class AgentFactory:
                     faster_first_response=basic_memory_settings.get(
                         "faster_first_response", True
                     ),
-                    segment_method=basic_memory_settings.get(
-                        "segment_method", "pysbd"
-                    ),
+                    segment_method=basic_memory_settings.get("segment_method", "pysbd"),
                     use_mcpp=True,
                     tool_routing="legacy",
                     interrupt_method=interrupt_method,
@@ -290,18 +291,14 @@ def _create_split_agent(
     )
 
     # ── Persona sub-agent ──
-    logger.info(
-        f"SplitAgent persona sub-agent: provider={persona_llm_provider}"
-    )
+    logger.info(f"SplitAgent persona sub-agent: provider={persona_llm_provider}")
 
     persona_agent = BasicMemoryAgent(
         llm=persona_llm,
         system=persona_system,
         live2d_model=live2d_model,
         tts_preprocessor_config=tts_preprocessor_config,
-        faster_first_response=basic_memory_settings.get(
-            "faster_first_response", True
-        ),
+        faster_first_response=basic_memory_settings.get("faster_first_response", True),
         segment_method=basic_memory_settings.get("segment_method", "pysbd"),
         use_mcpp=False,
         tool_routing="legacy",
@@ -314,8 +311,7 @@ def _create_split_agent(
     )
 
     logger.info(
-        f"SplitAgent created: persona={persona_llm_provider}, "
-        f"tool={tool_llm_provider}"
+        f"SplitAgent created: persona={persona_llm_provider}, tool={tool_llm_provider}"
     )
     return SplitAgent(
         persona_agent=persona_agent,

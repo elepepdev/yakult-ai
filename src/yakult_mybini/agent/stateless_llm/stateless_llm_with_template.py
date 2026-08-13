@@ -174,7 +174,9 @@ class AsyncLLMWithTemplate(StatelessLLMInterface):
             logger.info(f"Model: {self.model}")
             logger.info(f"Messages: {messages}")
             logger.info(f"temperature: {self.temperature}")
-            raise RuntimeError("Error calling the chat endpoint: Error occurred while generating response. See the logs for details.")
+            raise RuntimeError(
+                "Error calling the chat endpoint: Error occurred while generating response. See the logs for details."
+            )
         finally:
             # make sure the stream is properly closed
             # so when interrupted, no more tokens will being generated.

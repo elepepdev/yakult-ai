@@ -29,8 +29,8 @@ for p in [_this_dir, _parent_dir, _grandparent_dir]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from mcp.server.fastmcp import FastMCP
-from mcp.types import CallToolResult, TextContent
+from mcp.server.fastmcp import FastMCP  # noqa: E402
+from mcp.types import CallToolResult, TextContent  # noqa: E402
 
 if sys.platform == "linux" and "DISPLAY" not in os.environ:
     os.environ["DISPLAY"] = ":0"
@@ -51,12 +51,14 @@ _pw = None
 
 # ─── Playwright lifecycle ────────────────────────────────────────────────────
 
+
 async def _ensure_page() -> Any:
     global _browser, _context, _page, _pw
     if _page and not _page.is_closed():
         return _page
     if _pw is None:
         import importlib
+
         pw_module = importlib.import_module("playwright.async_api")
         _pw = await pw_module.async_playwright().start()
     os.makedirs(PROFILE_DIR, exist_ok=True)
@@ -350,6 +352,7 @@ window.__ayClickSimpan = () => clickEl(findSimpan());
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
+
 def distribute(total: int, days: int) -> list[int]:
     if days <= 0:
         return []
@@ -362,11 +365,15 @@ def _result(payload: dict, live: bool = False) -> CallToolResult:
         content=[TextContent(type="text", text=json.dumps(payload, ensure_ascii=False))]
     )
     if live:
-        result.meta = {"liveViewData": {"debuggerUrl": f"http://127.0.0.1:{DEBUG_PORT}"}}
+        result.meta = {
+            "liveViewData": {"debuggerUrl": f"http://127.0.0.1:{DEBUG_PORT}"}
+        }
     return result
 
 
-async def _wait_until(page, js_expr: str, timeout_ms: int = 25000, poll: int = 400) -> bool:
+async def _wait_until(
+    page, js_expr: str, timeout_ms: int = 25000, poll: int = 400
+) -> bool:
     end = time.time() + timeout_ms / 1000
     while time.time() < end:
         try:
@@ -380,29 +387,51 @@ async def _wait_until(page, js_expr: str, timeout_ms: int = 25000, poll: int = 4
 
 # ─── Generic browser tools ───────────────────────────────────────────────────
 
-@mcp.tool(name="browser_navigate", description="Open a URL in the automation browser (headed Chromium). Use for any web form or portal the user asks you to fill in. Returns current URL, page title, and a snapshot of the form fields found on the page.")
+
+@mcp.tool(
+    name="browser_navigate",
+    description="Open a URL in the automation browser (headed Chromium). Use for any web form or portal the user asks you to fill in. Returns current URL, page title, and a snapshot of the form fields found on the page.",
+)
 async def browser_navigate(url: str) -> CallToolResult:
     try:
         page = await _ensure_page()
         await page.goto(url, wait_until="domcontentloaded", timeout=60000)
         await page.wait_for_timeout(1500)
-        snap = await page.evaluate("window.__aySnapshot ? window.__aySnapshot() : {url: location.href}")
-        return _result({"success": True, "url": page.url, "title": await page.title(), "snapshot": snap}, live=True)
+        snap = await page.evaluate(
+            "window.__aySnapshot ? window.__aySnapshot() : {url: location.href}"
+        )
+        return _result(
+            {
+                "success": True,
+                "url": page.url,
+                "title": await page.title(),
+                "snapshot": snap,
+            },
+            live=True,
+        )
     except Exception as e:
         return _result({"success": False, "error": str(e)})
 
 
-@mcp.tool(name="browser_snapshot", description="Dump the current page's interactive structure: every labeled select (with its options) and input found on the page, plus the list of visible buttons. Use this to understand an unfamiliar form before filling it.")
+@mcp.tool(
+    name="browser_snapshot",
+    description="Dump the current page's interactive structure: every labeled select (with its options) and input found on the page, plus the list of visible buttons. Use this to understand an unfamiliar form before filling it.",
+)
 async def browser_snapshot() -> str:
     try:
         page = await _ensure_page()
-        snap = await page.evaluate("window.__aySnapshot ? window.__aySnapshot() : {fields: [], buttons: [], url: location.href}")
+        snap = await page.evaluate(
+            "window.__aySnapshot ? window.__aySnapshot() : {fields: [], buttons: [], url: location.href}"
+        )
         return _result({"success": True, "snapshot": snap})
     except Exception as e:
         return _result({"success": False, "error": str(e)})
 
 
-@mcp.tool(name="browser_fill_by_label", description="Fill a text/number input field by its visible label text (e.g. 'Shalat Rawatib'). Finds the input closest to the label and sets its value.")
+@mcp.tool(
+    name="browser_fill_by_label",
+    description="Fill a text/number input field by its visible label text (e.g. 'Shalat Rawatib'). Finds the input closest to the label and sets its value.",
+)
 async def browser_fill_by_label(label: str, value: Any) -> str:
     try:
         page = await _ensure_page()
@@ -413,7 +442,10 @@ async def browser_fill_by_label(label: str, value: Any) -> str:
         return _result({"success": False, "error": str(e)})
 
 
-@mcp.tool(name="browser_select_by_label", description="Pick an option from a dropdown/select by its visible label text (e.g. choose 'Ya'/'Tidak' for a labeled select). The value can be the exact option text or a substring.")
+@mcp.tool(
+    name="browser_select_by_label",
+    description="Pick an option from a dropdown/select by its visible label text (e.g. choose 'Ya'/'Tidak' for a labeled select). The value can be the exact option text or a substring.",
+)
 async def browser_select_by_label(label: str, value: str) -> str:
     try:
         page = await _ensure_page()
@@ -424,7 +456,10 @@ async def browser_select_by_label(label: str, value: str) -> str:
         return _result({"success": False, "error": str(e)})
 
 
-@mcp.tool(name="browser_click_by_text", description="Click a button/link whose text contains the given string (e.g. 'Tampilkan Data', 'Simpan', 'Tambah Data').")
+@mcp.tool(
+    name="browser_click_by_text",
+    description="Click a button/link whose text contains the given string (e.g. 'Tampilkan Data', 'Simpan', 'Tambah Data').",
+)
 async def browser_click_by_text(text: str) -> str:
     try:
         page = await _ensure_page()
@@ -435,7 +470,10 @@ async def browser_click_by_text(text: str) -> str:
         return _result({"success": False, "error": str(e)})
 
 
-@mcp.tool(name="browser_screenshot", description="Save a screenshot of the current automation browser page to browser_data/screenshots/. Returns the absolute PNG path.")
+@mcp.tool(
+    name="browser_screenshot",
+    description="Save a screenshot of the current automation browser page to browser_data/screenshots/. Returns the absolute PNG path.",
+)
 async def browser_screenshot(path: str = "") -> str:
     try:
         page = await _ensure_page()
@@ -448,7 +486,10 @@ async def browser_screenshot(path: str = "") -> str:
         return _result({"success": False, "error": str(e)})
 
 
-@mcp.tool(name="browser_close", description="Close the automation browser (persistent profile is kept, so portal login survives).")
+@mcp.tool(
+    name="browser_close",
+    description="Close the automation browser (persistent profile is kept, so portal login survives).",
+)
 async def browser_close() -> str:
     try:
         await _close_browser()
@@ -457,18 +498,26 @@ async def browser_close() -> str:
         return _result({"success": False, "error": str(e)})
 
 
-@mcp.tool(name="browser_status", description="Report whether the automation browser is running, the current URL, and whether it is on the SIS main page or a form page.")
+@mcp.tool(
+    name="browser_status",
+    description="Report whether the automation browser is running, the current URL, and whether it is on the SIS main page or a form page.",
+)
 async def browser_status() -> str:
     try:
         page = await _ensure_page()
-        snap = await page.evaluate("window.__aySnapshot ? window.__aySnapshot() : {url: location.href}")
-        return _result({
-            "success": True,
-            "url": page.url,
-            "title": await page.title(),
-            "mainPage": snap.get("mainPage"),
-            "formPage": snap.get("formPage"),
-        }, live=True)
+        snap = await page.evaluate(
+            "window.__aySnapshot ? window.__aySnapshot() : {url: location.href}"
+        )
+        return _result(
+            {
+                "success": True,
+                "url": page.url,
+                "title": await page.title(),
+                "mainPage": snap.get("mainPage"),
+                "formPage": snap.get("formPage"),
+            },
+            live=True,
+        )
     except Exception as e:
         return _result({"success": False, "error": str(e)})
 
@@ -513,6 +562,7 @@ window.__ayClickByText = async (txt) => {
 
 # ─── Data persistence tools ──────────────────────────────────────────────────
 
+
 def _load_form_data() -> dict:
     if os.path.exists(FORM_DATA_PATH):
         try:
@@ -523,7 +573,10 @@ def _load_form_data() -> dict:
     return {}
 
 
-@mcp.tool(name="browser_save_form_data", description="Save a named blob of form data (JSON) to browser_data/form_data.json so it can be reused for later fills. Use this after the user answers questions once.")
+@mcp.tool(
+    name="browser_save_form_data",
+    description="Save a named blob of form data (JSON) to browser_data/form_data.json so it can be reused for later fills. Use this after the user answers questions once.",
+)
 def browser_save_form_data(name: str, data: dict) -> str:
     try:
         store = _load_form_data()
@@ -536,18 +589,28 @@ def browser_save_form_data(name: str, data: dict) -> str:
         return _result({"success": False, "error": str(e)})
 
 
-@mcp.tool(name="browser_load_form_data", description="Load a previously saved named blob of form data (JSON) from browser_data/form_data.json.")
+@mcp.tool(
+    name="browser_load_form_data",
+    description="Load a previously saved named blob of form data (JSON) from browser_data/form_data.json.",
+)
 def browser_load_form_data(name: str) -> str:
     try:
         store = _load_form_data()
         if name not in store:
-            return _result({"success": False, "error": f"No saved form data named '{name}'", "available": list(store.keys())})
+            return _result(
+                {
+                    "success": False,
+                    "error": f"No saved form data named '{name}'",
+                    "available": list(store.keys()),
+                }
+            )
         return _result({"success": True, "name": name, "data": store[name]})
     except Exception as e:
         return _result({"success": False, "error": str(e)})
 
 
 # ─── Amal Yaumi macro ────────────────────────────────────────────────────────
+
 
 async def _open_pekan(page, pekan_name: str) -> list | None:
     if not await page.evaluate("window.__ayClickTambah()"):
@@ -569,7 +632,11 @@ async def _fill_one_pekan(page, entry: dict, mode: str) -> dict:
 
     dates = await _open_pekan(page, pekan_name)
     if not dates:
-        return {"pekan": pekan_name, "success": False, "error": "Tidak bisa membuka modal / pekan tidak ditemukan"}
+        return {
+            "pekan": pekan_name,
+            "success": False,
+            "error": "Tidak bisa membuka modal / pekan tidak ditemukan",
+        }
 
     n_days = len(dates)
     rawatib_per_day = distribute(extras.get("rawatib", 0), n_days)
@@ -580,18 +647,40 @@ async def _fill_one_pekan(page, entry: dict, mode: str) -> dict:
         if day_idx > 0:
             # re-open modal for the next day
             if not await page.evaluate("window.__ayClickTambah()"):
-                return {"pekan": pekan_name, "success": False, "error": "Modal gagal dibuka ulang", "days_done": days_done}
+                return {
+                    "pekan": pekan_name,
+                    "success": False,
+                    "error": "Modal gagal dibuka ulang",
+                    "days_done": days_done,
+                }
             await page.wait_for_timeout(1200)
             await page.evaluate(f"window.__aySelectPekan({json.dumps(pekan_name)})")
             await page.wait_for_timeout(1200)
-        if not await page.evaluate(f"window.__aySelectDate({json.dumps(date_obj['value'])})"):
-            return {"pekan": pekan_name, "success": False, "error": f"Tanggal {date_obj['text']} gagal dipilih", "days_done": days_done}
+        if not await page.evaluate(
+            f"window.__aySelectDate({json.dumps(date_obj['value'])})"
+        ):
+            return {
+                "pekan": pekan_name,
+                "success": False,
+                "error": f"Tanggal {date_obj['text']} gagal dipilih",
+                "days_done": days_done,
+            }
         if not await page.evaluate("window.__ayClickTampilkan()"):
-            return {"pekan": pekan_name, "success": False, "error": "Tombol Tampilkan Data tidak ditemukan", "days_done": days_done}
+            return {
+                "pekan": pekan_name,
+                "success": False,
+                "error": "Tombol Tampilkan Data tidak ditemukan",
+                "days_done": days_done,
+            }
 
         await page.wait_for_load_state("networkidle")
         if not await _wait_until(page, "window.__ayOnForm()", 25000):
-            return {"pekan": pekan_name, "success": False, "error": "Form tidak muncul setelah Tampilkan Data", "days_done": days_done}
+            return {
+                "pekan": pekan_name,
+                "success": False,
+                "error": "Form tidak muncul setelah Tampilkan Data",
+                "days_done": days_done,
+            }
 
         cfg = {
             "dayIdx": day_idx,
@@ -604,7 +693,13 @@ async def _fill_one_pekan(page, entry: dict, mode: str) -> dict:
         fill_log = await page.evaluate(f"window.__ayFillDay({json.dumps(cfg)})")
 
         if not await page.evaluate("window.__ayClickSimpan()"):
-            return {"pekan": pekan_name, "success": False, "error": "Tombol Simpan tidak ditemukan", "days_done": days_done, "fill_log": fill_log}
+            return {
+                "pekan": pekan_name,
+                "success": False,
+                "error": "Tombol Simpan tidak ditemukan",
+                "days_done": days_done,
+                "fill_log": fill_log,
+            }
         await page.wait_for_load_state("networkidle")
         await _wait_until(page, "window.__ayOnMain()", 25000)
         days_done += 1
@@ -612,10 +707,18 @@ async def _fill_one_pekan(page, entry: dict, mode: str) -> dict:
     return {"pekan": pekan_name, "success": True, "days": days_done}
 
 
-@mcp.tool(name="amal_yaumi_fill", description="Port of the Amal Yaumi Auto-Fill extension for SIS Al Uswah (app.sisal.uswah.sch.id). mode='ramadhan' or 'biasa'. entries is a list of {pekanName, data:{sholat:{subuh/dzuhur/ashar/maghrib/isya: {hari, berjamaah, masjid, awalWaktu}}, extras:{puasaRamadhan/tarawih (ramadhan) atau puasaSunnah/qiyamulLail (biasa), dhuha, matsurat, infaq, jamTidur, rawatib (total), tilawah (total)}}}. Browser runs headed so the user can watch; portal login persists in browser_data/profile. Returns a per-pekan report.")
+@mcp.tool(
+    name="amal_yaumi_fill",
+    description="Port of the Amal Yaumi Auto-Fill extension for SIS Al Uswah (app.sisal.uswah.sch.id). mode='ramadhan' or 'biasa'. entries is a list of {pekanName, data:{sholat:{subuh/dzuhur/ashar/maghrib/isya: {hari, berjamaah, masjid, awalWaktu}}, extras:{puasaRamadhan/tarawih (ramadhan) atau puasaSunnah/qiyamulLail (biasa), dhuha, matsurat, infaq, jamTidur, rawatib (total), tilawah (total)}}}. Browser runs headed so the user can watch; portal login persists in browser_data/profile. Returns a per-pekan report.",
+)
 async def amal_yaumi_fill(
     mode: Annotated[str, Field(description="'ramadhan' or 'biasa'")],
-    entries: Annotated[list, Field(description="List of pekan entries, each {pekanName, data:{sholat, extras}}")],
+    entries: Annotated[
+        list,
+        Field(
+            description="List of pekan entries, each {pekanName, data:{sholat, extras}}"
+        ),
+    ],
 ) -> str:
     try:
         page = await _ensure_page()
@@ -623,7 +726,13 @@ async def amal_yaumi_fill(
             await page.goto(BASE_URL, wait_until="domcontentloaded", timeout=60000)
             await page.wait_for_timeout(1500)
         if not await _wait_until(page, "window.__ayOnMain()", 30000):
-            return _result({"success": False, "error": "Halaman utama SIS tidak terdeteksi (login?). Browser sudah dibuka — silakan login di window Chromium, lalu ulangi."}, live=True)
+            return _result(
+                {
+                    "success": False,
+                    "error": "Halaman utama SIS tidak terdeteksi (login?). Browser sudah dibuka — silakan login di window Chromium, lalu ulangi.",
+                },
+                live=True,
+            )
 
         report = []
         for entry in entries:
@@ -631,7 +740,9 @@ async def amal_yaumi_fill(
             report.append(r)
             if not r["success"]:
                 break
-        return _result({"success": all(r["success"] for r in report), "report": report}, live=True)
+        return _result(
+            {"success": all(r["success"] for r in report), "report": report}, live=True
+        )
     except Exception as e:
         traceback.print_exc()
         return _result({"success": False, "error": str(e)})

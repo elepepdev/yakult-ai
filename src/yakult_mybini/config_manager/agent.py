@@ -53,7 +53,9 @@ class BasicMemoryAgentConfig(I18nMixin, BaseModel):
     segment_method: Literal["regex", "pysbd"] = Field("pysbd", alias="segment_method")
     use_mcpp: Optional[bool] = Field(False, alias="use_mcpp")
     mcp_enabled_servers: Optional[List[str]] = Field([], alias="mcp_enabled_servers")
-    tool_routing: Literal["legacy", "persona_first"] = Field("legacy", alias="tool_routing")
+    tool_routing: Literal["legacy", "persona_first"] = Field(
+        "legacy", alias="tool_routing"
+    )
 
     # Separate LLM for memory extraction (e.g. 'groq_llm' to save Gemini RPD)
     memory_llm_provider: Optional[str] = Field(None, alias="memory_llm_provider")
@@ -63,7 +65,9 @@ class BasicMemoryAgentConfig(I18nMixin, BaseModel):
     tool_llm_config_name: Optional[str] = Field(None, alias="tool_llm_config_name")
 
     # Split-agent mode: one model → two agents (persona + tool)
-    subagent_mode: Literal["none", "split", "hybrid"] = Field("none", alias="subagent_mode")
+    subagent_mode: Literal["none", "split", "hybrid"] = Field(
+        "none", alias="subagent_mode"
+    )
     subagent: Optional[Dict[str, "SubAgentConfig"]] = Field(None, alias="subagent")
 
     # Hybrid mode: simple tools handled by persona LLM, complex tools delegated to specialist
@@ -249,7 +253,6 @@ class AgentSettings(I18nMixin, BaseModel):
         "basic_memory_agent": Description(
             en="Configuration for basic memory agent", zh="基础记忆代理配置"
         ),
-
         "hume_ai_agent": Description(
             en="Configuration for Hume AI agent", zh="Hume AI 代理配置"
         ),

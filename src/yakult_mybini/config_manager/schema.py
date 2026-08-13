@@ -30,7 +30,8 @@ def _model_fields(model: Any) -> dict:
         model, "__pydantic_fields__", {}
     )
 
-from .main import Config
+
+from .main import Config  # noqa: E402
 
 SECRET_MASK = "********"
 
@@ -165,9 +166,15 @@ def _to_schema(
             if args:
                 elem = _unwrap(args[0])
                 node["item_type"] = _type_name(elem)
-                if isinstance(elem, type) and issubclass(elem, BaseModel) and depth < max_depth:
+                if (
+                    isinstance(elem, type)
+                    and issubclass(elem, BaseModel)
+                    and depth < max_depth
+                ):
                     node["children"] = [
-                        _to_schema(elem, v, f"{field_path}.{i}", lang, max_depth, depth + 1)
+                        _to_schema(
+                            elem, v, f"{field_path}.{i}", lang, max_depth, depth + 1
+                        )
                         for i, v in enumerate(value or [])
                     ]
                     node["item_model"] = True
@@ -194,7 +201,9 @@ def _to_schema(
     }
 
 
-def build_config_schema(config: Config, lang: str = "en", max_depth: int = 6) -> Dict[str, Any]:
+def build_config_schema(
+    config: Config, lang: str = "en", max_depth: int = 6
+) -> Dict[str, Any]:
     """Serialize the full ``Config`` model into a frontend-renderable schema.
 
     Args:

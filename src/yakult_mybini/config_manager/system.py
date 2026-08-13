@@ -1,7 +1,6 @@
 # config_manager/system.py
 from typing import Dict, Optional, ClassVar, Literal
 from pydantic import Field, model_validator
-from pydantic.dataclasses import dataclass
 from .i18n import I18nMixin, Description
 from ..conversations.idle_life_manager import IdleLifeConfig
 
@@ -28,10 +27,19 @@ class FileAttachmentConfig(I18nMixin):
     enable_ocr: bool = Field(True, alias="enable_ocr")
 
     DESCRIPTIONS: ClassVar[Dict[str, Description]] = {
-        "max_files": Description(en="Maximum number of files per message", zh="每条消息最大文件数"),
-        "max_file_size_mb": Description(en="Maximum file size in MB", zh="最大文件大小（MB）"),
-        "token_budget": Description(en="Max tokens of extracted text per file", zh="每个文件提取文本的最大 token 数"),
-        "enable_ocr": Description(en="OCR scanned PDFs/images as text fallback", zh="对扫描 PDF/图片启用 OCR"),
+        "max_files": Description(
+            en="Maximum number of files per message", zh="每条消息最大文件数"
+        ),
+        "max_file_size_mb": Description(
+            en="Maximum file size in MB", zh="最大文件大小（MB）"
+        ),
+        "token_budget": Description(
+            en="Max tokens of extracted text per file",
+            zh="每个文件提取文本的最大 token 数",
+        ),
+        "enable_ocr": Description(
+            en="OCR scanned PDFs/images as text fallback", zh="对扫描 PDF/图片启用 OCR"
+        ),
     }
 
 
@@ -77,9 +85,7 @@ class SystemConfig(I18nMixin):
             en="AI capability mode: 'lite' (chat only), 'minimal' (light tools), 'full_agent' (all tools)",
             zh="AI 能力模式：'lite'（仅聊天）、'minimal'（轻量工具）、'full_agent'（全部工具）",
         ),
-        "desktop": Description(
-            en="Desktop engine configuration", zh="桌面引擎配置"
-        ),
+        "desktop": Description(en="Desktop engine configuration", zh="桌面引擎配置"),
         "idle_life": Description(
             en="Autonomous idle life system (random talk, subconscious thoughts, dreams, moods)",
             zh="自主空闲生活系统（随机对话、潜意识想法、梦境、情绪）",

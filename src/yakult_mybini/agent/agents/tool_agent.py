@@ -31,6 +31,7 @@ class ToolResult:
         needs_user_response: Whether Gemini needs to generate a response
         conversation_context: Updated conversation context after tool execution
     """
+
     tool_was_called: bool = False
     tool_results: List[Dict[str, Any]] = field(default_factory=list)
     tool_statuses: List[Dict[str, Any]] = field(default_factory=list)
@@ -68,7 +69,9 @@ class ToolAgent:
         self._llm = llm
         self._tool_executor = tool_executor
         self._tool_manager = tool_manager
-        self._system = system_prompt or "You are a tool assistant. Call tools as requested."
+        self._system = (
+            system_prompt or "You are a tool assistant. Call tools as requested."
+        )
         self._max_tool_rounds = max_tool_rounds
 
         # Determine tool format based on LLM type
@@ -76,10 +79,14 @@ class ToolAgent:
         self._caller_mode: str = "OpenAI"
         if isinstance(llm, ClaudeAsyncLLM):
             self._caller_mode = "Claude"
-            self._tools = tool_manager.get_formatted_tools("Claude") if tool_manager else []
+            self._tools = (
+                tool_manager.get_formatted_tools("Claude") if tool_manager else []
+            )
         else:
             self._caller_mode = "OpenAI"
-            self._tools = tool_manager.get_formatted_tools("OpenAI") if tool_manager else []
+            self._tools = (
+                tool_manager.get_formatted_tools("OpenAI") if tool_manager else []
+            )
 
         logger.info(
             f"ToolAgent initialized with {len(self._tools)} tools, "
@@ -137,13 +144,14 @@ class ToolAgent:
                         isinstance(tc, ToolCallObject) for tc in event
                     ):
                         pending_tool_calls = event
-                    elif isinstance(event, dict) and event.get("type") == "tool_use_complete":
+                    elif (
+                        isinstance(event, dict)
+                        and event.get("type") == "tool_use_complete"
+                    ):
                         # Claude format
                         pending_tool_calls.append(event["data"])
                     elif event == "__API_NOT_SUPPORT_TOOLS__":
-                        logger.warning(
-                            "ToolAgent: LLM does not support native tools"
-                        )
+                        logger.warning("ToolAgent: LLM does not support native tools")
                         result.error = "LLM does not support native tool calling"
                         return result
 
@@ -171,16 +179,19 @@ class ToolAgent:
                                 "input": tc_data.get("input", {}),
                             }
                         )
-                    messages.append(
-                        {"role": "assistant", "content": assistant_content}
-                    )
+                    messages.append({"role": "assistant", "content": assistant_content})
                 else:
                     # OpenAI format
                     tool_calls_api = []
                     for tc in pending_tool_calls:
-                        tc_id = tc.id if hasattr(tc, "id") else (
-                            tc.get("id") if isinstance(tc, dict) else 
-                            f"tc_{uuid.uuid4().hex[:12]}"
+                        tc_id = (
+                            tc.id
+                            if hasattr(tc, "id")
+                            else (
+                                tc.get("id")
+                                if isinstance(tc, dict)
+                                else f"tc_{uuid.uuid4().hex[:12]}"
+                            )
                         )
                         if isinstance(tc, ToolCallObject):
                             tool_calls_api.append(
@@ -195,16 +206,14 @@ class ToolAgent:
                             )
                         elif isinstance(tc, dict):
                             tool_calls_api.append(tc)
-                    
+
                     msg = {"role": "assistant", "tool_calls": tool_calls_api}
                     if text_response:
                         msg["content"] = text_response
                     messages.append(msg)
 
                 # Execute tools
-                logger.info(
-                    f"ToolAgent: Executing {len(pending_tool_calls)} tool(s)"
-                )
+                logger.info(f"ToolAgent: Executing {len(pending_tool_calls)} tool(s)")
                 tool_results_for_llm = []
                 tool_statuses_batch = []
 
@@ -227,9 +236,13 @@ class ToolAgent:
                                     if asyncio.iscoroutine(res):
                                         await res
                                 except Exception as err:
-                                    logger.warning(f"ToolAgent: error in on_status_update callback: {err}")
+                                    logger.warning(
+                                        f"ToolAgent: error in on_status_update callback: {err}"
+                                    )
                 except StopAsyncIteration:
-                    logger.warning("ToolAgent: Tool executor finished without final marker")
+                    logger.warning(
+                        "ToolAgent: Tool executor finished without final marker"
+                    )
 
                 result.tool_statuses.extend(tool_statuses_batch)
                 result.tool_results.extend(tool_results_for_llm)
@@ -243,12 +256,14 @@ class ToolAgent:
                             if isinstance(tr, dict) and tr.get("type") == "tool_result":
                                 claude_results.append(tr)
                             else:
-                                claude_results.append({
-                                    "type": "tool_result",
-                                    "tool_use_id": tr.get("tool_use_id", ""),
-                                    "content": tr.get("content", ""),
-                                    "is_error": tr.get("is_error", False),
-                                })
+                                claude_results.append(
+                                    {
+                                        "type": "tool_result",
+                                        "tool_use_id": tr.get("tool_use_id", ""),
+                                        "content": tr.get("content", ""),
+                                        "is_error": tr.get("is_error", False),
+                                    }
+                                )
                         messages.append({"role": "user", "content": claude_results})
                     else:
                         # OpenAI format: just extend with tool result messages
@@ -304,7 +319,9 @@ class ToolAgent:
                     text += chunk.get("text", "")
 
             result = text.strip().upper()
-            logger.debug(f"ToolAgent: detect_tool_need='{result}' for '{user_message[:50]}...'")
+            logger.debug(
+                f"ToolAgent: detect_tool_need='{result}' for '{user_message[:50]}...'"
+            )
             return result.startswith("YES")
         except Exception as e:
             logger.warning(f"ToolAgent: detect_tool_need failed: {e}")

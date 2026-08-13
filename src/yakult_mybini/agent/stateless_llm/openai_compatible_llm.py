@@ -35,7 +35,10 @@ def _strip_image_parts(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             for part in content:
                 if isinstance(part, dict) and part.get("type") == "image_url":
                     new_content.append(
-                        {"type": "text", "text": "[Image content omitted — model does not support images]"}
+                        {
+                            "type": "text",
+                            "text": "[Image content omitted — model does not support images]",
+                        }
                     )
                 else:
                     new_content.append(part)
@@ -197,7 +200,9 @@ class AsyncLLM(StatelessLLMInterface):
                             # Capture extra content (e.g. Gemini thought_signature)
                             extra = getattr(tool_call, "extra_content", None)
                             if extra:
-                                accumulated_tool_calls[index]["extra_content"].update(extra)
+                                accumulated_tool_calls[index]["extra_content"].update(
+                                    extra
+                                )
 
                             # Update function information
                             if hasattr(tool_call, "function"):
@@ -237,7 +242,10 @@ class AsyncLLM(StatelessLLMInterface):
                 if len(chunk.choices) == 0:
                     logger.info("Empty chunk received")
                     continue
-                elif chunk.choices[0].delta is None or chunk.choices[0].delta.content is None:
+                elif (
+                    chunk.choices[0].delta is None
+                    or chunk.choices[0].delta.content is None
+                ):
                     yield ""
                     continue
                 yield chunk.choices[0].delta.content
@@ -289,4 +297,3 @@ class AsyncLLM(StatelessLLMInterface):
                 logger.debug("Chat completion finished.")
                 await stream.close()
                 logger.debug("Stream closed.")
-

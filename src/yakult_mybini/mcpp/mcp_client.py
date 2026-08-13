@@ -71,7 +71,9 @@ class MCPClient:
         )
 
         if server_env:
-            logger.debug(f"MCPC: Server '{server_name}' env includes: {list(server_env.keys())}")
+            logger.debug(
+                f"MCPC: Server '{server_name}' env includes: {list(server_env.keys())}"
+            )
 
         try:
             stdio_transport = await self.exit_stack.enter_async_context(

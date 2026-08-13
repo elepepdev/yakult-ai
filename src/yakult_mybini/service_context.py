@@ -13,7 +13,7 @@ from .agent.agents.agent_interface import AgentInterface
 from .translate.translate_interface import TranslateInterface
 
 from .conversations.screen_monitor import ScreenMonitor
-from .conversations.idle_life_manager import IdleLifeManager, IdleLifeConfig
+from .conversations.idle_life_manager import IdleLifeManager
 
 from .mcpp.server_registry import ServerRegistry
 from .mcpp.tool_manager import ToolManager
@@ -196,7 +196,9 @@ class ServiceContext:
                     lo, lc, raw = get_local_tool_definitions()
                     self.tool_manager.add_local_tools(lo, lc, raw)
                 except Exception as e:
-                    logger.error(f"Failed to register local file tools: {e}", exc_info=True)
+                    logger.error(
+                        f"Failed to register local file tools: {e}", exc_info=True
+                    )
 
             except Exception as e:
                 logger.error(
@@ -307,7 +309,11 @@ class ServiceContext:
         self.memory_manager = MemoryManager()
         agent_config = self.character_config.agent_config
         memory_llm = self._create_memory_llm(agent_config)
-        if memory_llm is None and hasattr(self.agent_engine, "_llm") and self.agent_engine._llm:
+        if (
+            memory_llm is None
+            and hasattr(self.agent_engine, "_llm")
+            and self.agent_engine._llm
+        ):
             memory_llm = self.agent_engine._llm
         if memory_llm:
             self.memory_manager.set_llm(memory_llm)
@@ -330,12 +336,16 @@ class ServiceContext:
         logger.debug("TodoManager initialized.")
 
         idle_config = self.system_config.idle_life if self.system_config else None
-        self.idle_life_manager = IdleLifeManager(
-            config=idle_config,
-            character_name=character_config.character_name,
-            personality=character_config.persona_prompt or "",
-            subconscious_llm=self._create_subconscious_llm(agent_config),
-        ) if idle_config else None
+        self.idle_life_manager = (
+            IdleLifeManager(
+                config=idle_config,
+                character_name=character_config.character_name,
+                personality=character_config.persona_prompt or "",
+                subconscious_llm=self._create_subconscious_llm(agent_config),
+            )
+            if idle_config
+            else None
+        )
         if self.idle_life_manager:
             logger.info(f"IdleLifeManager initialized (enabled={idle_config.enabled})")
         else:
@@ -503,7 +513,9 @@ class ServiceContext:
                     **provider_config,
                 )
             else:
-                logger.warning(f"memory_llm_provider '{provider}' not found in llm_configs")
+                logger.warning(
+                    f"memory_llm_provider '{provider}' not found in llm_configs"
+                )
         return None
 
     def _create_subconscious_llm(self, agent_config: AgentConfig):
@@ -527,19 +539,21 @@ class ServiceContext:
                 )
         return None
 
-    async def init_agent(self, agent_config: AgentConfig, persona_prompt: str, force: bool = False) -> None:
+    async def init_agent(
+        self, agent_config: AgentConfig, persona_prompt: str, force: bool = False
+    ) -> None:
         """Initialize or update the LLM engine based on agent configuration."""
         logger.info(f"Initializing Agent: {agent_config.conversation_agent_choice}")
 
-        current_mode = getattr(self, '_ai_mode', self.system_config.ai_mode)
+        current_mode = getattr(self, "_ai_mode", self.system_config.ai_mode)
 
         if (
             not force
             and self.agent_engine is not None
             and agent_config == self.character_config.agent_config
             and persona_prompt == self.character_config.persona_prompt
-            and getattr(self, '_last_init_mode', None) == current_mode
-            and getattr(self, '_last_init_model', None) is self.model
+            and getattr(self, "_last_init_mode", None) == current_mode
+            and getattr(self, "_last_init_model", None) is self.model
         ):
             logger.debug("Agent already initialized with the same config and mode.")
             return
@@ -553,7 +567,9 @@ class ServiceContext:
 
         # Build tool system prompt for dual or split agent mode
         tool_agent_system = ""
-        if (self._is_dual_agent_mode() or is_split) and not self._is_hybrid_agent_mode():
+        if (
+            self._is_dual_agent_mode() or is_split
+        ) and not self._is_hybrid_agent_mode():
             tool_agent_system = await self.build_tool_agent_system(split_mode=is_split)
             mode_label = "Split-agent" if is_split else "Dual-agent"
             logger.info(
@@ -577,7 +593,9 @@ class ServiceContext:
                 allowed = {"web_search", "search_youtube", "play_youtube", "open_url"}
                 tm.filter_tool_names(allowed)
             mcp_str = ""
-            logger.info(f"Minimal mode: tools limited to {tm.get_formatted_tools('OpenAI') if tm else 'none'}")
+            logger.info(
+                f"Minimal mode: tools limited to {tm.get_formatted_tools('OpenAI') if tm else 'none'}"
+            )
 
         # Pass avatar to agent factory
         avatar = self.character_config.avatar or ""
@@ -660,10 +678,7 @@ class ServiceContext:
         """Check if dual-agent mode is enabled (separate LLM for tools)."""
         try:
             basic_memory = (
-                self.character_config
-                .agent_config
-                .agent_settings
-                .basic_memory_agent
+                self.character_config.agent_config.agent_settings.basic_memory_agent
             )
             return bool(
                 basic_memory
@@ -677,10 +692,7 @@ class ServiceContext:
         """Check if hybrid mode is enabled (Gemini simple tools + Groq specialists)."""
         try:
             basic_memory = (
-                self.character_config
-                .agent_config
-                .agent_settings
-                .basic_memory_agent
+                self.character_config.agent_config.agent_settings.basic_memory_agent
             )
             return bool(
                 basic_memory
@@ -694,10 +706,7 @@ class ServiceContext:
         """Check if split-agent mode is enabled (one model, two agents)."""
         try:
             basic_memory = (
-                self.character_config
-                .agent_config
-                .agent_settings
-                .basic_memory_agent
+                self.character_config.agent_config.agent_settings.basic_memory_agent
             )
             return bool(
                 basic_memory
@@ -710,7 +719,7 @@ class ServiceContext:
 
     @property
     def ai_mode(self) -> str:
-        return getattr(self, '_ai_mode', self.system_config.ai_mode)
+        return getattr(self, "_ai_mode", self.system_config.ai_mode)
 
     def set_ai_mode(self, mode: str) -> None:
         if mode not in ("lite", "minimal", "full_agent"):
@@ -747,6 +756,7 @@ class ServiceContext:
         # Inject current time context
         from datetime import datetime
         from zoneinfo import ZoneInfo
+
         try:
             tz = ZoneInfo("Asia/Jakarta")
         except Exception:
@@ -758,7 +768,11 @@ class ServiceContext:
         )
         persona_prompt += time_context
 
-        skip_tool_prompts = self._is_dual_agent_mode() or self._is_split_agent_mode() or self._is_hybrid_agent_mode()
+        skip_tool_prompts = (
+            self._is_dual_agent_mode()
+            or self._is_split_agent_mode()
+            or self._is_hybrid_agent_mode()
+        )
 
         tool_prompt_skip_names = (
             "tool_guidance_prompt",
@@ -812,9 +826,7 @@ class ServiceContext:
 
             persona_prompt += prompt_content
 
-        logger.debug(
-            f"Persona system prompt length = {len(persona_prompt)} chars"
-        )
+        logger.debug(f"Persona system prompt length = {len(persona_prompt)} chars")
 
         # Grid overlay note: skip in lite/minimal
         if mode == "full_agent":
@@ -874,7 +886,12 @@ class ServiceContext:
             tool_system = "Kamu adalah asisten tool. Panggil tool sesuai permintaan."
 
         # In split mode, skip persona-heavy prompts
-        tool_prompt_names = ("tool_guidance_prompt", "agentic_capabilities_prompt", "agentic_reflection_prompt", "mcp_prompt")
+        tool_prompt_names = (
+            "tool_guidance_prompt",
+            "agentic_capabilities_prompt",
+            "agentic_reflection_prompt",
+            "mcp_prompt",
+        )
 
         for prompt_name, prompt_file in self.system_config.tool_prompts.items():
             if prompt_name not in tool_prompt_names:
@@ -898,9 +915,7 @@ class ServiceContext:
         if self.mcp_prompt:
             tool_system += f"\n\n{self.mcp_prompt}"
 
-        logger.debug(
-            f"ToolAgent system prompt length = {len(tool_system)} chars"
-        )
+        logger.debug(f"ToolAgent system prompt length = {len(tool_system)} chars")
         return tool_system
 
     async def handle_config_switch(

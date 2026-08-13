@@ -1,5 +1,5 @@
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from dataclasses import dataclass
+from typing import Dict, List
 
 
 @dataclass
@@ -32,13 +32,28 @@ def get_default_groups() -> Dict[str, ToolGroup]:
             description="Open/close apps, click, type, keyboard, window management, run commands",
             tool_names=[
                 "run_command",
-                "open_app", "focus_app", "close_app", "open_url",
-                "click", "type_text", "press_key", "hotkey",
+                "open_app",
+                "focus_app",
+                "close_app",
+                "open_url",
+                "click",
+                "type_text",
+                "press_key",
+                "hotkey",
                 "screen_size",
-                "find_element", "click_element", "list_clickable_elements",
+                "find_element",
+                "click_element",
+                "list_clickable_elements",
                 "get_active_window",
-                "find_window", "click_window", "focus_window", "list_windows",
-                "x11_click", "x11_type", "x11_key", "x11_hotkey", "x11_active_window",
+                "find_window",
+                "click_window",
+                "focus_window",
+                "list_windows",
+                "x11_click",
+                "x11_type",
+                "x11_key",
+                "x11_hotkey",
+                "x11_active_window",
             ],
             system_prompt=(
                 "Kamu adalah desktop controller. Tugasmu mengontrol komputer user.\n\n"
@@ -59,8 +74,14 @@ def get_default_groups() -> Dict[str, ToolGroup]:
             name="package",
             description="Install, remove, update packages and run commands",
             tool_names=[
-                "run_command", "run_sudo_command", "detect_os", "update_system",
-                "search_packages", "get_pkgbuild", "install_package", "remove_package",
+                "run_command",
+                "run_sudo_command",
+                "detect_os",
+                "update_system",
+                "search_packages",
+                "get_pkgbuild",
+                "install_package",
+                "remove_package",
             ],
             system_prompt=(
                 "Kamu adalah package manager. Tugasmu install/hapus/update software.\n\n"
@@ -75,12 +96,19 @@ def get_default_groups() -> Dict[str, ToolGroup]:
             name="browser",
             description="Fill web forms, automate browsers, fill Amal Yaumi on SIS Al Uswah",
             tool_names=[
-                "open_app", "search_youtube", "play_youtube",
-    "browser_navigate", "browser_snapshot",
-                "browser_fill_by_label", "browser_select_by_label",
-                "browser_click_by_text", "browser_screenshot",
-                "browser_close", "browser_status",
-                "browser_save_form_data", "browser_load_form_data",
+                "open_app",
+                "search_youtube",
+                "play_youtube",
+                "browser_navigate",
+                "browser_snapshot",
+                "browser_fill_by_label",
+                "browser_select_by_label",
+                "browser_click_by_text",
+                "browser_screenshot",
+                "browser_close",
+                "browser_status",
+                "browser_save_form_data",
+                "browser_load_form_data",
                 "amal_yaumi_fill",
             ],
             system_prompt=(
@@ -103,8 +131,11 @@ def get_default_groups() -> Dict[str, ToolGroup]:
             name="memory",
             description="Store memories, manage todo list",
             tool_names=[
-                "store_memory", "add_todo", "list_todos",
-                "delete_todo", "update_todo",
+                "store_memory",
+                "add_todo",
+                "list_todos",
+                "delete_todo",
+                "update_todo",
             ],
             system_prompt=(
                 "Kamu adalah memory keeper. Tugasmu menyimpan fakta tentang user "
@@ -115,10 +146,17 @@ def get_default_groups() -> Dict[str, ToolGroup]:
             name="youtube",
             description="Search and play YouTube videos, manage music playlists",
             tool_names=[
-                "search_youtube", "play_youtube", "play_mv",
-                "list_playlists", "create_playlist", "delete_playlist",
-                "rename_playlist", "add_to_playlist", "remove_from_playlist",
-                "download_to_playlist", "play_playlist",
+                "search_youtube",
+                "play_youtube",
+                "play_mv",
+                "list_playlists",
+                "create_playlist",
+                "delete_playlist",
+                "rename_playlist",
+                "add_to_playlist",
+                "remove_from_playlist",
+                "download_to_playlist",
+                "play_playlist",
             ],
             system_prompt=(
                 "Kamu adalah YouTube player. Tugasmu mencari dan memutar lagu/video dari YouTube "
@@ -176,31 +214,59 @@ def get_default_groups() -> Dict[str, ToolGroup]:
 
 SIMPLE_TOOL_NAMES = [
     # Web
-    "web_search", "search_news", "web_fetch",
+    "web_search",
+    "search_news",
+    "web_fetch",
     # Information
-    "weather", "system_status", "take_screenshot", "wikipedia_search",
+    "weather",
+    "system_status",
+    "take_screenshot",
+    "wikipedia_search",
     # Memory & Todo
-    "store_memory", "add_todo", "list_todos", "delete_todo", "update_todo",
+    "store_memory",
+    "add_todo",
+    "list_todos",
+    "delete_todo",
+    "update_todo",
     # YouTube
-    "search_youtube", "play_youtube", "play_mv",
-    "list_playlists", "create_playlist", "delete_playlist",
-    "rename_playlist", "add_to_playlist", "remove_from_playlist",
-    "download_to_playlist", "play_playlist",
+    "search_youtube",
+    "play_youtube",
+    "play_mv",
+    "list_playlists",
+    "create_playlist",
+    "delete_playlist",
+    "rename_playlist",
+    "add_to_playlist",
+    "remove_from_playlist",
+    "download_to_playlist",
+    "play_playlist",
     # Navigation & display
-    "open_app", "open_url", "screen_size", "detect_os",
-    "set_grid_spec", "disable_grid_overlay",
+    "open_app",
+    "open_url",
+    "screen_size",
+    "detect_os",
+    "set_grid_spec",
+    "disable_grid_overlay",
     "get_active_window",
     # Browser / form automation
-    "browser_navigate", "browser_snapshot",
-    "browser_fill_by_label", "browser_select_by_label",
-    "browser_click_by_text", "browser_screenshot",
-    "browser_close", "browser_status",
-    "browser_save_form_data", "browser_load_form_data",
+    "browser_navigate",
+    "browser_snapshot",
+    "browser_fill_by_label",
+    "browser_select_by_label",
+    "browser_click_by_text",
+    "browser_screenshot",
+    "browser_close",
+    "browser_status",
+    "browser_save_form_data",
+    "browser_load_form_data",
     "amal_yaumi_fill",
     # Vision / OCR
-    "ocr_screen", "ocr_image",
+    "ocr_screen",
+    "ocr_image",
     # File operations (read is safe; write/delete require user approval)
-    "read_file", "write_file", "delete_file",
+    "read_file",
+    "write_file",
+    "delete_file",
 ]
 
 
@@ -234,7 +300,16 @@ def get_summon_specialist_tool() -> dict:
                 "properties": {
                     "group": {
                         "type": "string",
-                        "enum": ["desktop", "browser", "package", "memory", "youtube", "file", "display", "vision"],
+                        "enum": [
+                            "desktop",
+                            "browser",
+                            "package",
+                            "memory",
+                            "youtube",
+                            "file",
+                            "display",
+                            "vision",
+                        ],
                         "description": "Specialist group: desktop, package, memory, youtube, file, display, vision",
                     },
                     "request": {
@@ -257,4 +332,3 @@ def filter_tool_definitions(
     """Filter tool definitions to only include those in the given group."""
     names = set(group.tool_names)
     return [t for t in all_tools if t.get("function", {}).get("name") in names]
-

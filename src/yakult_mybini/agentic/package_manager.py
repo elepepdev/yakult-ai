@@ -73,12 +73,22 @@ async def run_package_operation(
 ) -> AsyncGenerator[Tuple[int, str, bool], None]:
     pkg_manager = detect_package_manager()
     if pkg_manager == "unknown":
-        yield 100, json.dumps({"success": False, "error": "No supported package manager found"}), True
+        yield (
+            100,
+            json.dumps(
+                {"success": False, "error": "No supported package manager found"}
+            ),
+            True,
+        )
         return
 
     sudo_pw = sudo_password
     if not sudo_pw:
-        yield 100, json.dumps({"success": False, "error": "SUDO_PASSWORD not configured"}), True
+        yield (
+            100,
+            json.dumps({"success": False, "error": "SUDO_PASSWORD not configured"}),
+            True,
+        )
         return
 
     if operation == "update_system":
@@ -90,43 +100,71 @@ async def run_package_operation(
             "yum": "yum update -y && yum clean all",
         }
         if pkg_manager not in commands:
-            yield 100, json.dumps({
-                "success": False,
-                "error": f"Unsupported package manager: {pkg_manager}"
-            }), True
+            yield (
+                100,
+                json.dumps(
+                    {
+                        "success": False,
+                        "error": f"Unsupported package manager: {pkg_manager}",
+                    }
+                ),
+                True,
+            )
             return
         shell_cmd = f"echo '{sudo_pw}' | sudo -S bash -c '{commands[pkg_manager]}'"
 
     elif operation == "install_package":
         if not re.match(r"^[a-zA-Z0-9\-_+\.@/:]+$", package_name):
-            yield 100, json.dumps({"success": False, "error": "Invalid package name format"}), True
+            yield (
+                100,
+                json.dumps({"success": False, "error": "Invalid package name format"}),
+                True,
+            )
             return
 
         helper = None
         if use_aur:
             helper = detect_aur_helper()
             if not helper:
-                yield 100, json.dumps({"success": False, "error": "No AUR helper (paru or yay) found"}), True
+                yield (
+                    100,
+                    json.dumps(
+                        {"success": False, "error": "No AUR helper (paru or yay) found"}
+                    ),
+                    True,
+                )
                 return
         else:
             helper = detect_aur_helper() or pkg_manager
 
         if helper == pkg_manager:
-            shell_cmd = f"echo '{sudo_pw}' | sudo -S pacman -S --noconfirm {package_name}"
+            shell_cmd = (
+                f"echo '{sudo_pw}' | sudo -S pacman -S --noconfirm {package_name}"
+            )
         else:
             shell_cmd = f"echo '{sudo_pw}' | sudo -S -v && {helper} -S --noconfirm {package_name}"
 
     elif operation == "remove_package":
         if not re.match(r"^[a-zA-Z0-9\-_+\.@/:]+$", package_name):
-            yield 100, json.dumps({"success": False, "error": "Invalid package name format"}), True
+            yield (
+                100,
+                json.dumps({"success": False, "error": "Invalid package name format"}),
+                True,
+            )
             return
 
         flags_map = {"standard": "-R", "cascade": "-Rs", "complete": "-Rns"}
         flags = flags_map.get(mode, "-Rs")
-        shell_cmd = f"echo '{sudo_pw}' | sudo -S pacman {flags} --noconfirm {package_name}"
+        shell_cmd = (
+            f"echo '{sudo_pw}' | sudo -S pacman {flags} --noconfirm {package_name}"
+        )
 
     else:
-        yield 100, json.dumps({"success": False, "error": f"Unknown operation: {operation}"}), True
+        yield (
+            100,
+            json.dumps({"success": False, "error": f"Unknown operation: {operation}"}),
+            True,
+        )
         return
 
     logger.info(f"Running package operation: {operation} {package_name}")
@@ -176,11 +214,13 @@ async def run_package_operation(
 
     returncode = process.returncode
     is_error = returncode != 0
-    result_content = json.dumps({
-        "success": returncode == 0,
-        "package_manager": pkg_manager,
-        "output": "\n".join(stdout_lines[-50:]),
-        "error": "\n".join(stderr_lines[-50:]) if is_error else None,
-        "returncode": returncode,
-    })
+    result_content = json.dumps(
+        {
+            "success": returncode == 0,
+            "package_manager": pkg_manager,
+            "output": "\n".join(stdout_lines[-50:]),
+            "error": "\n".join(stderr_lines[-50:]) if is_error else None,
+            "returncode": returncode,
+        }
+    )
     yield (100, result_content, is_error)

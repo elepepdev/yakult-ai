@@ -4,7 +4,7 @@ import shutil
 from uuid import uuid4
 import numpy as np
 from datetime import datetime
-from fastapi import APIRouter, WebSocket, UploadFile, File, Form, Response
+from fastapi import APIRouter, WebSocket, UploadFile, File, Response
 from starlette.responses import JSONResponse
 from starlette.websockets import WebSocketDisconnect
 from loguru import logger
@@ -261,9 +261,13 @@ def init_webtool_routes(default_context_cache: ServiceContext) -> APIRouter:
             except Exception as e:
                 await file.close()
                 logger.error(f"Failed to overwrite VRM file: {e}")
-                return JSONResponse({"error": f"Failed to save file: {e}"}, status_code=500)
+                return JSONResponse(
+                    {"error": f"Failed to save file: {e}"}, status_code=500
+                )
             await file.close()
-            logger.info(f"VRM model re-imported (overwrote): {safe_name} -> {existing_dest}")
+            logger.info(
+                f"VRM model re-imported (overwrote): {safe_name} -> {existing_dest}"
+            )
             return JSONResponse(
                 {
                     "success": True,

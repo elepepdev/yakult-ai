@@ -2,7 +2,6 @@ import os
 import re
 import uuid
 
-from loguru import logger
 
 DOWNLOAD_DIR = os.environ.get(
     "PLAYLIST_DOWNLOAD_DIR", os.path.join(os.getcwd(), "playlists", "downloads")
@@ -17,7 +16,10 @@ def to_http_url(path: str, base_url: str) -> str:
     if not path or path.startswith("http://") or path.startswith("https://"):
         return path
     abspath = os.path.abspath(path)
-    for local_dir, url_prefix in ((DOWNLOAD_DIR, "/playlists/downloads"), (VIDEO_DIR, "/playlists/videos")):
+    for local_dir, url_prefix in (
+        (DOWNLOAD_DIR, "/playlists/downloads"),
+        (VIDEO_DIR, "/playlists/videos"),
+    ):
         if local_dir and abspath.startswith(os.path.abspath(local_dir)):
             rel = os.path.relpath(abspath, os.path.abspath(local_dir))
             return f"{base_url}{url_prefix}/{rel}"
@@ -25,11 +27,13 @@ def to_http_url(path: str, base_url: str) -> str:
 
 
 def _safe_filename(title: str) -> str:
-    cleaned = re.sub(r'[^\w\- ]', "", title)
+    cleaned = re.sub(r"[^\w\- ]", "", title)
     return cleaned.strip()[:80] or "media"
 
 
-def _download(video_url: str, title: str, filename: str, out_dir: str, video: bool) -> str:
+def _download(
+    video_url: str, title: str, filename: str, out_dir: str, video: bool
+) -> str:
     import yt_dlp
 
     os.makedirs(out_dir, exist_ok=True)

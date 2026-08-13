@@ -299,7 +299,13 @@ class SherpaOnnxASRConfig(I18nMixin):
                     "sense_voice and tokens must be provided for sense_voice model type"
                 )
         elif model_type == "fire_red_asr":
-            if not all([values.fire_red_asr_encoder, values.fire_red_asr_decoder, values.tokens]):
+            if not all(
+                [
+                    values.fire_red_asr_encoder,
+                    values.fire_red_asr_decoder,
+                    values.tokens,
+                ]
+            ):
                 raise ValueError(
                     "fire_red_asr_encoder, fire_red_asr_decoder, and tokens must be provided for fire_red_asr model type"
                 )
@@ -310,15 +316,17 @@ class SherpaOnnxASRConfig(I18nMixin):
 class ASRConfig(I18nMixin):
     """Configuration for Automatic Speech Recognition."""
 
-    asr_model: Optional[Literal[
-        "faster_whisper",
-        "whisper_cpp",
-        "whisper",
-        "azure_asr",
-        "fun_asr",
-        "groq_whisper_asr",
-        "sherpa_onnx_asr",
-    ]] = Field(None, alias="asr_model")
+    asr_model: Optional[
+        Literal[
+            "faster_whisper",
+            "whisper_cpp",
+            "whisper",
+            "azure_asr",
+            "fun_asr",
+            "groq_whisper_asr",
+            "sherpa_onnx_asr",
+        ]
+    ] = Field(None, alias="asr_model")
     azure_asr: Optional[AzureASRConfig] = Field(None, alias="azure_asr")
     faster_whisper: Optional[FasterWhisperConfig] = Field(None, alias="faster_whisper")
     whisper_cpp: Optional[WhisperCPPConfig] = Field(None, alias="whisper_cpp")

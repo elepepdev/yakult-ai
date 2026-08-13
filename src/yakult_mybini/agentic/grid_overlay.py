@@ -5,7 +5,6 @@ models can identify targets by grid cell rather than guessing pixel coordinates.
 """
 
 from PIL import Image, ImageDraw, ImageFont
-from typing import Optional
 
 
 def _col_label(n: int) -> str:
@@ -98,7 +97,12 @@ def add_grid(
             tw = bbox[2] - bbox[0]
             th = bbox[3] - bbox[1]
             draw.rectangle(
-                [cx - tw // 2 - 5, cy - th // 2 - 3, cx + tw // 2 + 5, cy + th // 2 + 3],
+                [
+                    cx - tw // 2 - 5,
+                    cy - th // 2 - 3,
+                    cx + tw // 2 + 5,
+                    cy + th // 2 + 3,
+                ],
                 fill=(0, 0, 0, 150),
             )
             draw.text(
@@ -109,7 +113,7 @@ def add_grid(
             )
 
     # ── corner badge (bottom-right) ─────────────────────────────
-    range_label = f"{_col_label(0)}1 – {_col_label(cols-1)}{rows}"
+    range_label = f"{_col_label(0)}1 – {_col_label(cols - 1)}{rows}"
     bb = draw.textbbox((0, 0), range_label, font=small_font)
     rw = bb[2] - bb[0] + 16
     rh = bb[3] - bb[1] + 10

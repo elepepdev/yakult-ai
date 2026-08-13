@@ -125,7 +125,9 @@ class MemoryManager:
                 created = now
             recency_hours = max(0, (now - created).total_seconds() / 3600)
             recency_score = max(0, 1.0 - recency_hours / (24 * 30))
-            score = (m.accessed_count * 0.3) + (recency_score * 0.7) + (m.confidence * 0.2)
+            score = (
+                (m.accessed_count * 0.3) + (recency_score * 0.7) + (m.confidence * 0.2)
+            )
             scored.append((score, m))
         scored.sort(key=lambda x: x[0], reverse=True)
         selected = [m for _, m in scored[:top_k]]
@@ -134,7 +136,9 @@ class MemoryManager:
         self.save(memories)
         return selected
 
-    def merge(self, existing: List[MemoryItem], new_facts: List[str], category: str = "fact") -> List[MemoryItem]:
+    def merge(
+        self, existing: List[MemoryItem], new_facts: List[str], category: str = "fact"
+    ) -> List[MemoryItem]:
         existing_facts = []
         for item in existing:
             if item.category == category:
@@ -163,15 +167,17 @@ class MemoryManager:
             return True
         if nf in ef or ef in nf:
             return True
-        we = set(re.findall(r'\w+', ef))
-        wn = set(re.findall(r'\w+', nf))
+        we = set(re.findall(r"\w+", ef))
+        wn = set(re.findall(r"\w+", nf))
         if we and wn:
             overlap = len(we & wn) / max(len(we), len(wn))
             if overlap > 0.75:
                 return True
         return False
 
-    def prune(self, memories: List[MemoryItem], max_count: int = MAX_MEMORIES) -> List[MemoryItem]:
+    def prune(
+        self, memories: List[MemoryItem], max_count: int = MAX_MEMORIES
+    ) -> List[MemoryItem]:
         if len(memories) <= max_count:
             return memories
         memories.sort(key=lambda m: (m.accessed_count, m.confidence))
@@ -197,7 +203,9 @@ class MemoryManager:
             extracted = json.loads(json_str)
             if not isinstance(extracted, list):
                 extracted = [extracted]
-            facts = [str(e) if isinstance(e, str) else json.dumps(e) for e in extracted if e]
+            facts = [
+                str(e) if isinstance(e, str) else json.dumps(e) for e in extracted if e
+            ]
             if not facts:
                 return
             facts = self._filter_inferred_facts(facts, text)
@@ -222,8 +230,8 @@ class MemoryManager:
 
     @staticmethod
     def _word_overlap(a: str, b: str) -> float:
-        wa = set(re.findall(r'\w+', a.lower()))
-        wb = set(re.findall(r'\w+', b.lower()))
+        wa = set(re.findall(r"\w+", a.lower()))
+        wb = set(re.findall(r"\w+", b.lower()))
         if not wa or not wb:
             return 0.0
         return len(wa & wb) / max(len(wa), len(wb))
@@ -235,11 +243,28 @@ class MemoryManager:
         filtered = []
         for fact in facts:
             fl = fact.lower()
-            if any(kw in fl for kw in ("name", "nama", "umur", "age", "tinggal", "live in", "kerja", "work at", "sekolah", "school at", "berusia")):
-                has_explicit = bool(re.search(
-                    r'(?:nama\s+saya|my\s+name\s+is|panggil\s+aku|namaku|name\'s)',
-                    tl
-                ))
+            if any(
+                kw in fl
+                for kw in (
+                    "name",
+                    "nama",
+                    "umur",
+                    "age",
+                    "tinggal",
+                    "live in",
+                    "kerja",
+                    "work at",
+                    "sekolah",
+                    "school at",
+                    "berusia",
+                )
+            ):
+                has_explicit = bool(
+                    re.search(
+                        r"(?:nama\s+saya|my\s+name\s+is|panggil\s+aku|namaku|name\'s)",
+                        tl,
+                    )
+                )
                 if not has_explicit:
                     logger.debug(f"Rejected inferred fact: {fact}")
                     continue
@@ -256,19 +281,60 @@ class MemoryManager:
             end = text.rfind("}")
             if end == -1 or end < start:
                 return None
-            return text[start:end+1]
+            return text[start : end + 1]
         end = text.rfind("]")
         if end == -1 or end < start:
             return None
-        return text[start:end+1]
+        return text[start : end + 1]
 
     @staticmethod
     def _classify_fact(fact: str) -> str:
         fl = fact.lower()
-        if any(kw in fl for kw in ("suka", "like", "love", "prefer", "favorit", "hobi", "hobby", "sering", "often")):
+        if any(
+            kw in fl
+            for kw in (
+                "suka",
+                "like",
+                "love",
+                "prefer",
+                "favorit",
+                "hobi",
+                "hobby",
+                "sering",
+                "often",
+            )
+        ):
             return "preference"
-        if any(kw in fl for kw in ("nama", "name", "umur", "age", "tinggal", "live", "kerja", "work", "sekolah", "school")):
+        if any(
+            kw in fl
+            for kw in (
+                "nama",
+                "name",
+                "umur",
+                "age",
+                "tinggal",
+                "live",
+                "kerja",
+                "work",
+                "sekolah",
+                "school",
+            )
+        ):
             return "personal"
-        if any(kw in fl for kw in ("lagi", "sedang", "currently", "mau", "akan", "going to", "proyek", "project", "tugas", "task")):
+        if any(
+            kw in fl
+            for kw in (
+                "lagi",
+                "sedang",
+                "currently",
+                "mau",
+                "akan",
+                "going to",
+                "proyek",
+                "project",
+                "tugas",
+                "task",
+            )
+        ):
             return "task"
         return "fact"

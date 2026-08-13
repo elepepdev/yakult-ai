@@ -33,7 +33,7 @@ from .config_manager.utils import (
     save_config,
     validate_config,
 )
-from .config_manager.schema import build_config_schema, apply_updates, SECRET_MASK
+from .config_manager.schema import build_config_schema, apply_updates
 from .conversations.conversation_handler import (
     handle_conversation_trigger,
     handle_group_interrupt,
@@ -41,7 +41,7 @@ from .conversations.conversation_handler import (
 )
 from .mcpp.music_player_manager import music_player_manager
 from .memory.playlist_manager import playlist_manager
-from .agentic.downloader import download_audio, download_video, DOWNLOAD_DIR, VIDEO_DIR, to_http_url
+from .agentic.downloader import download_audio, download_video, to_http_url
 from .conversations.single_conversation import process_single_conversation
 from .character_model import build_emotion_map_from_vrm_expressions
 
@@ -188,9 +188,9 @@ class WebSocketHandler:
             te = session_service_context.tool_executor
             if te is not None:
                 te.set_approval_callback(
-                    lambda payload, uid=client_uid, ws=websocket: self._request_approval(
-                        ws, uid, payload
-                    )
+                    lambda payload,
+                    uid=client_uid,
+                    ws=websocket: self._request_approval(ws, uid, payload)
                 )
                 logger.info(
                     f"Approval callback wired for client {client_uid} "
@@ -833,9 +833,7 @@ class WebSocketHandler:
             save_config(new_config, target_file)
         else:
             char_path = os.path.normpath(
-                os.path.join(
-                    context.system_config.config_alts_dir, target_file
-                )
+                os.path.join(context.system_config.config_alts_dir, target_file)
             )
             if not char_path.startswith(context.system_config.config_alts_dir):
                 raise ValueError("Invalid configuration file path")
@@ -994,7 +992,10 @@ class WebSocketHandler:
             logger.error(f"Error saving config: {e}")
             await websocket.send_text(
                 json.dumps(
-                    {"type": "error", "message": f"Error saving configuration: {str(e)}"}
+                    {
+                        "type": "error",
+                        "message": f"Error saving configuration: {str(e)}",
+                    }
                 )
             )
             return
@@ -1023,7 +1024,9 @@ class WebSocketHandler:
                 # agent / persona
                 if char_changed.get("agent_config") != old_char.get(
                     "agent_config"
-                ) or char_changed.get("persona_prompt") != old_char.get("persona_prompt"):
+                ) or char_changed.get("persona_prompt") != old_char.get(
+                    "persona_prompt"
+                ):
                     await context.init_agent(
                         new_config.character_config.agent_config,
                         new_config.character_config.persona_prompt,
@@ -1042,11 +1045,9 @@ class WebSocketHandler:
                     context.vad_engine = None
                     context.init_vad(new_config.character_config.vad_config)
                 # model
-                if (
-                    char_changed.get("live2d_model_name")
-                    != old_char.get("live2d_model_name")
-                    or char_changed.get("model_type") != old_char.get("model_type")
-                ):
+                if char_changed.get("live2d_model_name") != old_char.get(
+                    "live2d_model_name"
+                ) or char_changed.get("model_type") != old_char.get("model_type"):
                     context.init_model(
                         new_config.character_config.live2d_model_name,
                         new_config.character_config.model_type,
@@ -1062,7 +1063,9 @@ class WebSocketHandler:
         }
         # refresh schema so the GUI reflects masked secrets / new values
         try:
-            response["schema"] = build_config_schema(context.config, data.get("lang", "en"))
+            response["schema"] = build_config_schema(
+                context.config, data.get("lang", "en")
+            )
         except Exception:
             pass
         await websocket.send_text(json.dumps(response))
@@ -1087,7 +1090,13 @@ class WebSocketHandler:
             provider_config = getattr(llm_configs, provider_name, None)
             if not provider_config:
                 await websocket.send_text(
-                    json.dumps({"type": "available-models", "models": [], "provider": provider_name})
+                    json.dumps(
+                        {
+                            "type": "available-models",
+                            "models": [],
+                            "provider": provider_name,
+                        }
+                    )
                 )
                 return
 
@@ -1096,7 +1105,13 @@ class WebSocketHandler:
 
             if not base_url:
                 await websocket.send_text(
-                    json.dumps({"type": "available-models", "models": [], "provider": provider_name})
+                    json.dumps(
+                        {
+                            "type": "available-models",
+                            "models": [],
+                            "provider": provider_name,
+                        }
+                    )
                 )
                 return
 
@@ -1116,12 +1131,24 @@ class WebSocketHandler:
             models.sort()
 
             await websocket.send_text(
-                json.dumps({"type": "available-models", "models": models, "provider": provider_name})
+                json.dumps(
+                    {
+                        "type": "available-models",
+                        "models": models,
+                        "provider": provider_name,
+                    }
+                )
             )
         except Exception as e:
             logger.warning(f"Failed to fetch models for '{provider_name}': {e}")
             await websocket.send_text(
-                json.dumps({"type": "available-models", "models": [], "provider": provider_name})
+                json.dumps(
+                    {
+                        "type": "available-models",
+                        "models": [],
+                        "provider": provider_name,
+                    }
+                )
             )
 
     async def _handle_fetch_available_voices(
@@ -1158,7 +1185,9 @@ class WebSocketHandler:
                             headers={"xi-api-key": cfg.api_key},
                         )
                         resp.raise_for_status()
-                        voices = sorted(v["name"] for v in resp.json().get("voices", []))
+                        voices = sorted(
+                            v["name"] for v in resp.json().get("voices", [])
+                        )
             elif provider == "cartesia_tts":
                 cfg = context.character_config.tts_config.cartesia_tts
                 if cfg and cfg.api_key:
@@ -1169,7 +1198,9 @@ class WebSocketHandler:
                         )
                         resp.raise_for_status()
                         data = resp.json()
-                        items = data.get("voices", []) if isinstance(data, dict) else data
+                        items = (
+                            data.get("voices", []) if isinstance(data, dict) else data
+                        )
                         voices = sorted(
                             v.get("id") or v.get("name") for v in items if v
                         )
@@ -1355,10 +1386,14 @@ class WebSocketHandler:
                 context.config.system_config.ai_mode = mode
                 save_config(context.config, "conf.yaml")
             await context.reinit_agent_for_mode()
-            await websocket.send_text(json.dumps({
-                "type": "ai-mode-updated",
-                "mode": mode,
-            }))
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "ai-mode-updated",
+                        "mode": mode,
+                    }
+                )
+            )
             logger.info(f"AI mode updated to {mode} for {client_uid}")
         except Exception as e:
             logger.error(f"Failed to set AI mode: {e}")
@@ -1488,9 +1523,7 @@ class WebSocketHandler:
     ) -> None:
         items = playlist_manager.list()
         await websocket.send_text(
-            json.dumps(
-                {"type": "playlists", "data": [p.to_dict() for p in items]}
-            )
+            json.dumps({"type": "playlists", "data": [p.to_dict() for p in items]})
         )
 
     async def _handle_create_playlist(
@@ -1522,9 +1555,7 @@ class WebSocketHandler:
     ) -> None:
         playlist_id = data.get("id")
         name = data.get("name", "")
-        playlist = (
-            playlist_manager.rename(playlist_id, name) if playlist_id else None
-        )
+        playlist = playlist_manager.rename(playlist_id, name) if playlist_id else None
         await websocket.send_text(
             json.dumps(
                 {
@@ -1649,13 +1680,9 @@ class WebSocketHandler:
             return
         try:
             if as_video:
-                file_path = await asyncio.to_thread(
-                    download_video, video_url, title
-                )
+                file_path = await asyncio.to_thread(download_video, video_url, title)
             else:
-                file_path = await asyncio.to_thread(
-                    download_audio, video_url, title
-                )
+                file_path = await asyncio.to_thread(download_audio, video_url, title)
             from .memory.playlist_manager import PlaylistSong
 
             song = None
@@ -1691,7 +1718,12 @@ class WebSocketHandler:
         playlist = playlist_manager.get(data.get("playlist_id", ""))
         if not playlist or not playlist.songs:
             await websocket.send_text(
-                json.dumps({"type": "playlist-error", "message": "Playlist kosong atau tidak ditemukan"})
+                json.dumps(
+                    {
+                        "type": "playlist-error",
+                        "message": "Playlist kosong atau tidak ditemukan",
+                    }
+                )
             )
             return
         shuffle = bool(data.get("shuffle", False))
@@ -1712,7 +1744,9 @@ class WebSocketHandler:
         stream_url = await self._resolve_song_stream(first)
         if not stream_url:
             await websocket.send_text(
-                json.dumps({"type": "playlist-error", "message": "Gagal memuat lagu pertama"})
+                json.dumps(
+                    {"type": "playlist-error", "message": "Gagal memuat lagu pertama"}
+                )
             )
             return
 
@@ -1867,17 +1901,28 @@ class WebSocketHandler:
                     mgr.set_websocket_send(ws.send_text)
 
                 # Wire proactive trigger (lazy, one-shot)
-                if not hasattr(mgr, '_proactive_trigger_wired') or not mgr._proactive_trigger_wired:
+                if (
+                    not hasattr(mgr, "_proactive_trigger_wired")
+                    or not mgr._proactive_trigger_wired
+                ):
+
                     async def _proactive_topic(topic: str):
                         ctx = self.client_contexts.get(client_uid)
                         wsock = self.client_connections.get(client_uid)
                         if not ctx or not wsock:
                             return
-                        await wsock.send_text(json.dumps({
-                            "type": "full-text",
-                            "text": topic,
-                        }))
-                        from .conversations.conversation_handler import handle_conversation_trigger
+                        await wsock.send_text(
+                            json.dumps(
+                                {
+                                    "type": "full-text",
+                                    "text": topic,
+                                }
+                            )
+                        )
+                        from .conversations.conversation_handler import (
+                            handle_conversation_trigger,
+                        )
+
                         await handle_conversation_trigger(
                             msg_type="ai-speak-signal",
                             data={"text": topic, "images": []},
@@ -1891,18 +1936,26 @@ class WebSocketHandler:
                             current_conversation_tasks=self.current_conversation_tasks,
                             broadcast_to_group=self.broadcast_to_group,
                         )
-                        logger.info(f"IdleLife: proactive conversation triggered: '{topic[:40]}...'")
+                        logger.info(
+                            f"IdleLife: proactive conversation triggered: '{topic[:40]}...'"
+                        )
+
                     mgr.set_proactive_trigger(_proactive_topic)
                     mgr._proactive_trigger_wired = True
 
                 # Wire music trigger (lazy, one-shot)
-                if not hasattr(mgr, '_music_trigger_wired') or not mgr._music_trigger_wired:
+                if (
+                    not hasattr(mgr, "_music_trigger_wired")
+                    or not mgr._music_trigger_wired
+                ):
+
                     async def _music_next():
                         wsock = self.client_connections.get(client_uid)
                         ctx = self.client_contexts.get(client_uid)
                         if not wsock or not ctx:
                             return
                         await self._handle_music_next(wsock, client_uid, {})
+
                     mgr.set_music_trigger(_music_next)
                     mgr._music_trigger_wired = True
 
@@ -1923,10 +1976,14 @@ class WebSocketHandler:
                 # Handle wake greeting
                 greeting = mgr.consume_wake_greeting()
                 if greeting and ws:
-                    await ws.send_text(json.dumps({
-                        "type": "full-text",
-                        "text": greeting,
-                    }))
+                    await ws.send_text(
+                        json.dumps(
+                            {
+                                "type": "full-text",
+                                "text": greeting,
+                            }
+                        )
+                    )
 
                 await mgr.tick()
             except asyncio.CancelledError:
@@ -1976,9 +2033,18 @@ class WebSocketHandler:
             return
 
         async def _music_recommendation_task():
-            llm = getattr(context.idle_life_manager, '_subconscious_llm', None) if context.idle_life_manager else None
+            llm = (
+                getattr(context.idle_life_manager, "_subconscious_llm", None)
+                if context.idle_life_manager
+                else None
+            )
             if not llm:
-                llm = context.memory_manager._llm if hasattr(context.memory_manager, '_llm') and context.memory_manager._llm else None
+                llm = (
+                    context.memory_manager._llm
+                    if hasattr(context.memory_manager, "_llm")
+                    and context.memory_manager._llm
+                    else None
+                )
             if not llm:
                 logger.warning("Music next: no stateless LLM available, skipping")
                 return
@@ -1993,9 +2059,7 @@ class WebSocketHandler:
             if current:
                 prompt += f" Jangan pilih lagu yang mirip dengan '{current['title']}'."
 
-            system = (
-                "Kamu adalah assistant musik. Hanya output JSON tanpa teks lain."
-            )
+            system = "Kamu adalah assistant musik. Hanya output JSON tanpa teks lain."
 
             try:
                 chunks = []
@@ -2007,7 +2071,7 @@ class WebSocketHandler:
                         chunks.append(chunk)
 
                 raw = "".join(chunks).strip()
-                json_match = re.search(r'\{[^{}]*\}', raw)
+                json_match = re.search(r"\{[^{}]*\}", raw)
                 if not json_match:
                     logger.warning(f"Music next: no JSON in LLM response: {raw[:100]}")
                     return
@@ -2022,7 +2086,12 @@ class WebSocketHandler:
 
                 # Search YouTube for the song
                 import yt_dlp
-                ydl_opts = {"quiet": True, "no_warnings": True, "extract_flat": "in_playlist"}
+
+                ydl_opts = {
+                    "quiet": True,
+                    "no_warnings": True,
+                    "extract_flat": "in_playlist",
+                }
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(f"ytsearch3:{query}", download=False)
                     entries = info.get("entries", [])
@@ -2033,7 +2102,11 @@ class WebSocketHandler:
                     video_url = f"https://youtube.com/watch?v={first.get('id', '')}"
 
                 # Extract stream URL
-                ydl_opts2 = {"quiet": True, "no_warnings": True, "format": "bestaudio/best"}
+                ydl_opts2 = {
+                    "quiet": True,
+                    "no_warnings": True,
+                    "format": "bestaudio/best",
+                }
                 with yt_dlp.YoutubeDL(ydl_opts2) as ydl2:
                     info2 = ydl2.extract_info(video_url, download=False)
                     stream_url = info2.get("url", "")
@@ -2049,13 +2122,17 @@ class WebSocketHandler:
                 }
                 music_player_manager.play_song(song_info, is_recommended=True)
 
-                await websocket.send_text(json.dumps({
-                    "type": "music-play-song",
-                    "title": song_info["title"],
-                    "stream_url": stream_url,
-                    "video_url": video_url,
-                    "is_recommended": True,
-                }))
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "type": "music-play-song",
+                            "title": song_info["title"],
+                            "stream_url": stream_url,
+                            "video_url": video_url,
+                            "is_recommended": True,
+                        }
+                    )
+                )
                 logger.info(f"Music next: playing '{song_info['title']}'")
 
             except Exception as e:

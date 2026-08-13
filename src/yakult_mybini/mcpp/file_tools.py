@@ -30,7 +30,10 @@ MAX_READ_BYTES = 256 * 1024  # 256 KB
 # Tool definitions (OpenAI + Claude formats) + raw FormattedTool entries
 # ---------------------------------------------------------------------------
 
-def _openai_tool(name: str, description: str, properties: Dict[str, Any], required: List[str]) -> Dict[str, Any]:
+
+def _openai_tool(
+    name: str, description: str, properties: Dict[str, Any], required: List[str]
+) -> Dict[str, Any]:
     return {
         "type": "function",
         "function": {
@@ -45,7 +48,9 @@ def _openai_tool(name: str, description: str, properties: Dict[str, Any], requir
     }
 
 
-def get_local_tool_definitions() -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], Dict[str, FormattedTool]]:
+def get_local_tool_definitions() -> Tuple[
+    List[Dict[str, Any]], List[Dict[str, Any]], Dict[str, FormattedTool]
+]:
     """Return (openai_tools, claude_tools, raw_tools_dict) for the file tools."""
     openai_tools = [
         _openai_tool(
@@ -133,6 +138,7 @@ def get_local_tool_definitions() -> Tuple[List[Dict[str, Any]], List[Dict[str, A
 # Diff generation
 # ---------------------------------------------------------------------------
 
+
 def generate_diff(path: str, old_content: str, new_content: str) -> str:
     """Build a unified diff between the current file content and the new one."""
     old_lines = old_content.splitlines(keepends=True)
@@ -153,6 +159,7 @@ def generate_diff(path: str, old_content: str, new_content: str) -> str:
 # Approval payloads
 # ---------------------------------------------------------------------------
 
+
 def _resolve_path(raw: str) -> str:
     """Expand ~ and normalize a user-supplied path."""
     raw = raw.strip()
@@ -162,7 +169,9 @@ def _resolve_path(raw: str) -> str:
     return os.path.abspath(expanded)
 
 
-async def build_approval_payload(tool_name: str, tool_input: Dict[str, Any]) -> Dict[str, Any]:
+async def build_approval_payload(
+    tool_name: str, tool_input: Dict[str, Any]
+) -> Dict[str, Any]:
     """Build the payload sent to the frontend for a dangerous operation."""
     path = _resolve_path(str(tool_input.get("path", "")))
     payload: Dict[str, Any] = {
@@ -214,6 +223,7 @@ def _dir_size(path: Path) -> int:
 # Actual operations
 # ---------------------------------------------------------------------------
 
+
 async def run_file_operation(
     tool_name: str,
     tool_input: Dict[str, Any],
@@ -230,7 +240,9 @@ async def run_file_operation(
     Returns:
         tuple: (is_error, text_content)
     """
-    raw_path = str(tool_input.get("path", "")).strip() if isinstance(tool_input, dict) else ""
+    raw_path = (
+        str(tool_input.get("path", "")).strip() if isinstance(tool_input, dict) else ""
+    )
     if not raw_path:
         return True, "Error: 'path' is required."
     path = _resolve_path(raw_path)
@@ -261,7 +273,9 @@ async def _request_approval(
 ) -> bool:
     """Invoke the approval callback, supporting both sync and async callables."""
     if not callback:
-        logger.warning("No approval callback configured — denying file operation by default.")
+        logger.warning(
+            "No approval callback configured — denying file operation by default."
+        )
         return False
     try:
         result = callback(payload)
@@ -340,8 +354,8 @@ def _do_delete(path: str, tool_input: Dict[str, Any]) -> Tuple[bool, str]:
                     return False, f"Deleted empty directory: {path}"
                 except OSError:
                     return True, (
-                        f"Error: directory is not empty. Use recursive=true to delete it "
-                        f"and all its contents."
+                        "Error: directory is not empty. Use recursive=true to delete it "
+                        "and all its contents."
                     )
             shutil.rmtree(p)
             return False, f"Deleted directory (recursive): {path}"

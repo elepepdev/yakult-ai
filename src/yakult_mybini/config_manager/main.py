@@ -22,5 +22,4 @@ class Config(I18nMixin, BaseModel):
         "character_config": Description(
             en="Character configuration settings", zh="角色配置设置"
         ),
-
     }

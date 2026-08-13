@@ -4,7 +4,6 @@ import math
 import uuid
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
-from collections import Counter
 from loguru import logger
 
 from .types import ToolCallObject, ToolCallFunctionObject
@@ -48,7 +47,9 @@ class ToolRouter:
                 try:
                     compiled_patterns.append(re.compile(pat, re.IGNORECASE))
                 except re.error as e:
-                    logger.warning(f"ToolRouter: bad regex in category '{cat_name}': {e}")
+                    logger.warning(
+                        f"ToolRouter: bad regex in category '{cat_name}': {e}"
+                    )
             self._compiled[cat_name] = compiled_patterns
 
         self._cat_names = list(self._categories.keys())
@@ -124,7 +125,9 @@ class ToolRouter:
         text_lower = user_text.lower()
 
         if tool_name == "search_youtube":
-            q = self._extract_query_after_keywords(text_lower, ["cari", "putar", "lagu", "musik", "search", "play"])
+            q = self._extract_query_after_keywords(
+                text_lower, ["cari", "putar", "lagu", "musik", "search", "play"]
+            )
             if q:
                 params["query"] = q
             else:
@@ -138,7 +141,10 @@ class ToolRouter:
                 params["title"] = ""
 
         elif tool_name == "web_search":
-            q = self._extract_query_after_keywords(text_lower, ["cari", "search", "google", "googling", "tentang", "cek", "info"])
+            q = self._extract_query_after_keywords(
+                text_lower,
+                ["cari", "search", "google", "googling", "tentang", "cek", "info"],
+            )
             if q:
                 params["query"] = q
             else:
@@ -146,10 +152,15 @@ class ToolRouter:
             params["max_results"] = 10
 
         elif tool_name == "search_news":
-            q = self._extract_query_after_keywords(text_lower, ["berita", "news", "cari", "search"])
+            q = self._extract_query_after_keywords(
+                text_lower, ["berita", "news", "cari", "search"]
+            )
             params["query"] = q or text_lower
             params["max_results"] = 10
-            if any(w in text_lower for w in ["hari ini", "today", "baru", "terbaru", "recent"]):
+            if any(
+                w in text_lower
+                for w in ["hari ini", "today", "baru", "terbaru", "recent"]
+            ):
                 params["timelimit"] = "d"
             elif any(w in text_lower for w in ["minggu ini", "this week", "seminggu"]):
                 params["timelimit"] = "w"
@@ -161,7 +172,9 @@ class ToolRouter:
             params["max_chars"] = 8000
 
         elif tool_name == "open_app":
-            target = self._extract_query_after_keywords(text_lower, ["buka", "open", "jalankan", "start"])
+            target = self._extract_query_after_keywords(
+                text_lower, ["buka", "open", "jalankan", "start"]
+            )
             params["target"] = target or text_lower
 
         elif tool_name == "close_app":
@@ -169,7 +182,9 @@ class ToolRouter:
             params["target"] = target or text_lower
 
         elif tool_name == "focus_app":
-            target = self._extract_query_after_keywords(text_lower, ["focus", "fokus", "pindah ke"])
+            target = self._extract_query_after_keywords(
+                text_lower, ["focus", "fokus", "pindah ke"]
+            )
             params["target"] = target or text_lower
 
         elif tool_name == "open_url":
@@ -186,16 +201,26 @@ class ToolRouter:
             params["max_chars"] = 8000
 
         elif tool_name == "type_text":
-            q = self._extract_query_after_keywords(text_lower, ["ketik", "tulis", "type"])
+            q = self._extract_query_after_keywords(
+                text_lower, ["ketik", "tulis", "type"]
+            )
             params["text"] = q or text_lower
             params["grid_cell"] = self._extract_grid_cell(user_text)
 
         elif tool_name == "press_key":
             key_map = {
-                "enter": "enter", "esc": "escape", "escape": "escape",
-                "tab": "tab", "spasi": "space", "space": "space",
-                "backspace": "backspace", "delete": "delete",
-                "up": "up", "down": "down", "left": "left", "right": "right",
+                "enter": "enter",
+                "esc": "escape",
+                "escape": "escape",
+                "tab": "tab",
+                "spasi": "space",
+                "space": "space",
+                "backspace": "backspace",
+                "delete": "delete",
+                "up": "up",
+                "down": "down",
+                "left": "left",
+                "right": "right",
             }
             k = self._extract_query_after_keywords(text_lower, ["tekan", "press"])
             if k:
@@ -213,7 +238,9 @@ class ToolRouter:
             params["grid_cell"] = self._extract_grid_cell(user_text)
 
         elif tool_name in ("run_command", "run_sudo_command"):
-            q = self._extract_query_after_keywords(text_lower, ["run", "jalan", "jalankan", "command", "terminal", "sudo"])
+            q = self._extract_query_after_keywords(
+                text_lower, ["run", "jalan", "jalankan", "command", "terminal", "sudo"]
+            )
             params["target"] = q or text_lower
 
         elif tool_name == "install_package":
@@ -223,7 +250,9 @@ class ToolRouter:
                 params["use_aur"] = True
 
         elif tool_name == "remove_package":
-            q = self._extract_query_after_keywords(text_lower, ["remove", "uninstall", "hapus"])
+            q = self._extract_query_after_keywords(
+                text_lower, ["remove", "uninstall", "hapus"]
+            )
             params["package_name"] = q or text_lower
             if "complete" in text_lower or "total" in text_lower:
                 params["mode"] = "complete"
@@ -235,17 +264,26 @@ class ToolRouter:
         elif tool_name == "search_packages":
             q = self._extract_query_after_keywords(text_lower, ["cari", "search"])
             params["query"] = q or text_lower
-            if "local" in text_lower or "terinstall" in text_lower or "terpasang" in text_lower:
+            if (
+                "local" in text_lower
+                or "terinstall" in text_lower
+                or "terpasang" in text_lower
+            ):
                 params["local_only"] = True
 
         elif tool_name == "delete_file":
-            q = self._extract_query_after_keywords(text_lower, ["hapus", "delete", "remove"])
+            q = self._extract_query_after_keywords(
+                text_lower, ["hapus", "delete", "remove"]
+            )
             params["path"] = q or text_lower
             if "force" in text_lower or "paksa" in text_lower:
                 params["force"] = True
 
         elif tool_name == "store_memory":
-            q = self._extract_query_after_keywords(text_lower, ["ingat", "simpan", "catat", "remember", "store", "memorize"])
+            q = self._extract_query_after_keywords(
+                text_lower,
+                ["ingat", "simpan", "catat", "remember", "store", "memorize"],
+            )
             params["fact"] = q or text_lower
             for cat in ["preference", "personal", "task", "fact"]:
                 if cat in text_lower:
@@ -256,20 +294,20 @@ class ToolRouter:
             m = re.search(r"(8x6|10x10|6x4)", user_text)
             params["grid_spec"] = m.group(1) if m else "8x6"
 
-        elif tool_name == "play_osu_beatmap":
-            q = self._extract_query_after_keywords(text_lower, ["main", "play", "putar"])
-            params["title"] = q or text_lower
-
         elif tool_name == "get_pkgbuild":
             q = self._extract_query_after_keywords(text_lower, ["pkgbuild", "check"])
             params["package_name"] = q or text_lower
 
         return params
 
-    def _extract_query_after_keywords(self, text: str, keywords: List[str]) -> Optional[str]:
+    def _extract_query_after_keywords(
+        self, text: str, keywords: List[str]
+    ) -> Optional[str]:
         for kw in keywords:
             pattern = re.compile(
-                r"(?:^|\b)" + re.escape(kw) + r"\b\s*(?:tentang|soal|informasi|info)?\s*(.+)",
+                r"(?:^|\b)"
+                + re.escape(kw)
+                + r"\b\s*(?:tentang|soal|informasi|info)?\s*(.+)",
                 re.IGNORECASE,
             )
             m = pattern.search(text)
@@ -284,7 +322,9 @@ class ToolRouter:
         m = re.search(r"\b([A-Ha-h][1-8])\b", text)
         return m.group(1).upper() if m else None
 
-    def route(self, user_text: str, confidence_threshold: float = 0.15) -> List[ToolCallObject]:
+    def route(
+        self, user_text: str, confidence_threshold: float = 0.15
+    ) -> List[ToolCallObject]:
         intents = self._multi_intent_split(user_text)
         results: List[ToolCallObject] = []
 

@@ -40,7 +40,7 @@ def enable(grid_spec: str = "8x6") -> str:
     _grid_enabled = True
     return (
         f"Grid overlay enabled: {_grid_cols}x{_grid_rows} "
-        f"(cells {_col_label(0)}1 – {_col_label(_grid_cols-1)}{_grid_rows}). "
+        f"(cells {_col_label(0)}1 – {_col_label(_grid_cols - 1)}{_grid_rows}). "
         "Now overlay a grid on every screen-shared image sent to you. "
         "Use grid_cell='cellname' in click/type_text/x11_click instead of raw x,y."
     )
@@ -74,6 +74,7 @@ def apply_grid_to_image(base64_data_uri: str) -> str:
         import base64
         from PIL import Image
         import io
+
         prefix, b64 = base64_data_uri.split("base64,", 1)
         pil_img = Image.open(io.BytesIO(base64.b64decode(b64)))
         grid_img = add_grid(pil_img, rows=_grid_rows, cols=_grid_cols)

@@ -13,6 +13,7 @@ from .grid_overlay import cell_to_pixel
 
 def _get_pyautogui():
     import pyautogui
+
     return pyautogui
 
 
@@ -25,7 +26,6 @@ class ApplicationLauncher:
         "chrome": ["google-chrome", "google-chrome-stable", "chromium"],
         "brave": ["brave", "brave-browser"],
         "edge": ["microsoft-edge", "microsoft-edge-stable"],
-
         # Editors
         "vscode": ["code"],
         "vim": ["vim", "gvim", "nvim"],
@@ -34,21 +34,28 @@ class ApplicationLauncher:
         "sublime": ["subl", "sublime_text", "sublime-text"],
         "intellij": ["idea", "intellij-idea-ultimate", "intellij-idea-ce"],
         "pycharm": ["pycharm", "pycharm-professional", "pycharm-community"],
-
         # Terminals
-        "terminal": ["gnome-terminal", "konsole", "xterm", "alacritty", "kitty", "terminator", "tilix", "urxvt", "st"],
+        "terminal": [
+            "gnome-terminal",
+            "konsole",
+            "xterm",
+            "alacritty",
+            "kitty",
+            "terminator",
+            "tilix",
+            "urxvt",
+            "st",
+        ],
         "alacritty": ["alacritty"],
         "kitty": ["kitty"],
         "terminator": ["terminator"],
         "konsole": ["konsole"],
-
         # Media & Entertainment
         "vlc": ["vlc"],
         "mpv": ["mpv"],
         "spotify": ["spotify"],
         "rhythmbox": ["rhythmbox"],
         "clementine": ["clementine"],
-
         # Games
         "steam": ["steam"],
         "lutris": ["lutris"],
@@ -59,7 +66,6 @@ class ApplicationLauncher:
         "bottles": ["bottles"],
         "gamescope": ["gamescope"],
         "tlauncher": ["tlauncher", "TLauncher"],
-
         # Communication
         "slack": ["slack"],
         "discord": ["discord", "discord-ptb", "discord-canary"],
@@ -67,13 +73,11 @@ class ApplicationLauncher:
         "whatsapp": ["whatsapp-nativefier", "whatsapp-for-linux"],
         "zoom": ["zoom"],
         "teams": ["teams", "teams-for-linux"],
-
         # File managers
         "filemanager": ["nautilus", "nemo", "thunar", "dolphin", "pcmanfm", "caja"],
         "nautilus": ["nautilus"],
         "dolphin": ["dolphin"],
         "thunar": ["thunar"],
-
         # Development
         "docker": ["docker", "docker-desktop"],
         "postman": ["postman"],
@@ -82,18 +86,20 @@ class ApplicationLauncher:
         "sourcetree": ["sourcetree"],
         "obsidian": ["obsidian"],
         "notion": ["notion", "notion-snap"],
-
         # Graphics & Design
         "gimp": ["gimp"],
         "inkscape": ["inkscape"],
         "blender": ["blender"],
         "krita": ["krita"],
         "figma": ["figma-linux"],
-
         # System
         "calculator": ["gnome-calculator", "kcalc", "qalculate-gtk"],
         "calendar": ["gnome-calendar", "korganizer", "evolution"],
-        "settings": ["gnome-control-center", "systemsettings", "xfce4-settings-manager"],
+        "settings": [
+            "gnome-control-center",
+            "systemsettings",
+            "xfce4-settings-manager",
+        ],
         "system monitor": ["gnome-system-monitor", "ksysguard", "htop", "btop"],
     }
 
@@ -106,9 +112,9 @@ class ApplicationLauncher:
     def is_app_running(self, app_name: str) -> bool:
         app_name = app_name.lower()
         commands = self._get_commands_for(app_name)
-        for proc in psutil.process_iter(['name']):
+        for proc in psutil.process_iter(["name"]):
             try:
-                pname = proc.info['name'].lower()
+                pname = proc.info["name"].lower()
                 for cmd in commands:
                     if cmd.lower() in pname or pname in cmd.lower():
                         return True
@@ -121,6 +127,7 @@ class ApplicationLauncher:
             return False
         try:
             import shutil
+
             if not shutil.which("xdotool"):
                 return False
             time.sleep(0.5)
@@ -130,7 +137,8 @@ class ApplicationLauncher:
                     try:
                         result = subprocess.run(
                             ["xdotool", "search", flag, cmd, "windowactivate"],
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL,
                             timeout=3,
                         )
                         if result.returncode == 0:
@@ -191,8 +199,12 @@ class ApplicationLauncher:
                 return True
 
             if proc.returncode != 0:
-                stderr_output = proc.stderr.read().decode(errors="replace") if proc.stderr else ""
-                print(f"Launch failed (exit {proc.returncode}): {command} - {stderr_output}")
+                stderr_output = (
+                    proc.stderr.read().decode(errors="replace") if proc.stderr else ""
+                )
+                print(
+                    f"Launch failed (exit {proc.returncode}): {command} - {stderr_output}"
+                )
                 return False
 
             self._focus_window(command)
@@ -206,12 +218,19 @@ class ApplicationLauncher:
     def _try_launch_custom(self, cmd_list: list, params: Dict[str, Any]) -> bool:
         try:
             if "args" in params:
-                cmd_list = cmd_list + (params["args"] if isinstance(params["args"], list) else [str(params["args"])])
-            subprocess.Popen(cmd_list, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                cmd_list = cmd_list + (
+                    params["args"]
+                    if isinstance(params["args"], list)
+                    else [str(params["args"])]
+                )
+            subprocess.Popen(
+                cmd_list, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
             return True
         except Exception as e:
             print(f"Error launching custom command: {e}")
             return False
+
 
 class InputController:
     def __init__(self):
@@ -291,7 +310,15 @@ class InputController:
                 if not image_width or not image_height:
                     print("grid_cell requires image_width and image_height")
                     return False
-                coords = cell_to_pixel(grid_cell, image_width, image_height, grid_rows, grid_cols, cell_x=cell_x, cell_y=cell_y)
+                coords = cell_to_pixel(
+                    grid_cell,
+                    image_width,
+                    image_height,
+                    grid_rows,
+                    grid_cols,
+                    cell_x=cell_x,
+                    cell_y=cell_y,
+                )
                 if coords is None:
                     print(f"Invalid grid_cell: {grid_cell}")
                     return False
@@ -306,10 +333,13 @@ class InputController:
 
             if sys.platform == "linux":
                 import shutil as _shutil
+
                 if _shutil.which("xdotool"):
                     result = subprocess.run(
                         ["xdotool", "getactivewindow"],
-                        capture_output=True, text=True, timeout=3,
+                        capture_output=True,
+                        text=True,
+                        timeout=3,
                     )
                     if result.returncode == 0:
                         window_id = result.stdout.strip()
@@ -370,7 +400,15 @@ class InputController:
                 if not image_width or not image_height:
                     logger.error("grid_cell requires image_width and image_height")
                     return False
-                coords = cell_to_pixel(grid_cell, image_width, image_height, grid_rows, grid_cols, cell_x=cell_x, cell_y=cell_y)
+                coords = cell_to_pixel(
+                    grid_cell,
+                    image_width,
+                    image_height,
+                    grid_rows,
+                    grid_cols,
+                    cell_x=cell_x,
+                    cell_y=cell_y,
+                )
                 if coords is None:
                     logger.error(f"Invalid grid_cell: {grid_cell}")
                     return False
@@ -385,7 +423,9 @@ class InputController:
                 self._pyautogui.click(cx, cy)
             elif x is not None and y is not None:
                 cx, cy = self._scale_coords(x, y, image_width, image_height)
-                logger.info(f"click raw x,y=({x},{y}) img={image_width}x{image_height} → screen=({cx},{cy})")
+                logger.info(
+                    f"click raw x,y=({x},{y}) img={image_width}x{image_height} → screen=({cx},{cy})"
+                )
                 self._pyautogui.click(cx, cy)
             else:
                 self._pyautogui.click()
@@ -401,18 +441,48 @@ class InputController:
             return (0, 0)
         return self._pyautogui.size()
 
+
 class CommandRunner:
-    SAFE_COMMANDS = ["ls", "pwd", "cd", "cat", "echo", "mkdir", "touch", "git", "npm", "python", "pip", "code"]
-    DESTRUCTIVE_COMMANDS = ["rm", "rmdir", "del", "format", "dd", "mkfs", "shutdown", "reboot", "poweroff"]
+    SAFE_COMMANDS = [
+        "ls",
+        "pwd",
+        "cd",
+        "cat",
+        "echo",
+        "mkdir",
+        "touch",
+        "git",
+        "npm",
+        "python",
+        "pip",
+        "code",
+    ]
+    DESTRUCTIVE_COMMANDS = [
+        "rm",
+        "rmdir",
+        "del",
+        "format",
+        "dd",
+        "mkfs",
+        "shutdown",
+        "reboot",
+        "poweroff",
+    ]
 
     def __init__(self, safety_level: str = "medium"):
         self.safety_level = safety_level
 
     def run_command(self, command: str, check_safety: bool = True) -> Dict[str, Any]:
         if check_safety and not self._is_safe(command):
-            return {"success": False, "error": f"Command blocked by safety level: {self.safety_level}", "output": None}
+            return {
+                "success": False,
+                "error": f"Command blocked by safety level: {self.safety_level}",
+                "output": None,
+            }
         try:
-            result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=30)
+            result = subprocess.run(
+                command, shell=True, capture_output=True, text=True, timeout=30
+            )
             return {
                 "success": result.returncode == 0,
                 "output": result.stdout,
@@ -427,10 +497,15 @@ class CommandRunner:
     def run_sudo_command(self, command: str) -> Dict[str, Any]:
         sudo_pw = os.environ.get("SUDO_PASSWORD", "")
         if not sudo_pw:
-            return {"success": False, "error": "SUDO_PASSWORD not configured (set sudo_password in conf.yaml)"}
+            return {
+                "success": False,
+                "error": "SUDO_PASSWORD not configured (set sudo_password in conf.yaml)",
+            }
         try:
             full_cmd = f"echo '{sudo_pw}' | sudo -S {command}"
-            result = subprocess.run(full_cmd, shell=True, capture_output=True, text=True, timeout=60)
+            result = subprocess.run(
+                full_cmd, shell=True, capture_output=True, text=True, timeout=60
+            )
             return {
                 "success": result.returncode == 0,
                 "output": result.stdout,
@@ -460,18 +535,29 @@ class FileController:
             if not path.is_file():
                 return {"success": False, "error": f"Not a file: {filepath}"}
             content = path.read_text(encoding="utf-8")
-            return {"success": True, "content": content, "path": str(path), "size": len(content)}
+            return {
+                "success": True,
+                "content": content,
+                "path": str(path),
+                "size": len(content),
+            }
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def write_file(self, filepath: str, content: str, append: bool = False) -> Dict[str, Any]:
+    def write_file(
+        self, filepath: str, content: str, append: bool = False
+    ) -> Dict[str, Any]:
         try:
             path = Path(filepath).expanduser().resolve()
             path.parent.mkdir(parents=True, exist_ok=True)
             mode = "a" if append else "w"
             with open(path, mode, encoding="utf-8") as f:
                 f.write(content)
-            return {"success": True, "message": f"{'Appended to' if append else 'Wrote'} {path}", "path": str(path)}
+            return {
+                "success": True,
+                "message": f"{'Appended to' if append else 'Wrote'} {path}",
+                "path": str(path),
+            }
         except Exception as e:
             return {"success": False, "error": str(e)}
 
@@ -486,11 +572,15 @@ class FileController:
             elif path.is_dir():
                 if force:
                     import shutil
+
                     shutil.rmtree(path)
                     return {"success": True, "message": f"Deleted directory: {path}"}
                 else:
                     path.rmdir()
-                    return {"success": True, "message": f"Deleted empty directory: {path}"}
+                    return {
+                        "success": True,
+                        "message": f"Deleted empty directory: {path}",
+                    }
             else:
                 return {"success": False, "error": f"Cannot delete: {path}"}
         except Exception as e:
@@ -506,8 +596,20 @@ class FileController:
             entries = []
             for entry in path.iterdir():
                 entry_type = "dir" if entry.is_dir() else "file"
-                entries.append({"name": entry.name, "type": entry_type, "size": entry.stat().st_size if entry.is_file() else 0})
-            return {"success": True, "path": str(path), "entries": sorted(entries, key=lambda x: (x["type"] != "dir", x["name"]))}
+                entries.append(
+                    {
+                        "name": entry.name,
+                        "type": entry_type,
+                        "size": entry.stat().st_size if entry.is_file() else 0,
+                    }
+                )
+            return {
+                "success": True,
+                "path": str(path),
+                "entries": sorted(
+                    entries, key=lambda x: (x["type"] != "dir", x["name"])
+                ),
+            }
         except Exception as e:
             return {"success": False, "error": str(e)}
 
@@ -526,6 +628,7 @@ class DesktopController:
         if (sw, sh) == (0, 0):
             try:
                 from .x11_controller import get_x11_controller
+
                 x11 = get_x11_controller()
                 sw, sh = x11._x_screen_size()
             except Exception:
@@ -544,6 +647,7 @@ class DesktopController:
         if (sw, sh) == (0, 0):
             try:
                 from .x11_controller import get_x11_controller
+
                 x11 = get_x11_controller()
                 sw, sh = x11._x_screen_size()
             except Exception:
@@ -578,10 +682,20 @@ class DesktopController:
 
         if action_type == "open_app":
             success = self.app_launcher.open_app(target, params)
-            return {"success": success, "message": f"Opened {target}" if success else f"Failed to open {target}"}
+            return {
+                "success": success,
+                "message": f"Opened {target}"
+                if success
+                else f"Failed to open {target}",
+            }
         elif action_type == "focus_app":
             success = self.app_launcher.focus_app(target)
-            return {"success": success, "message": f"Focused {target}" if success else f"Could not find window for {target}"}
+            return {
+                "success": success,
+                "message": f"Focused {target}"
+                if success
+                else f"Could not find window for {target}",
+            }
         elif action_type == "close_app":
             closed = False
             errors = []
@@ -589,6 +703,7 @@ class DesktopController:
             # Strategy 1: X11 close window by ID (safest — targets specific window, not active window)
             try:
                 from .x11_controller import get_x11_controller
+
                 x11 = get_x11_controller()
                 if x11._display:
                     windows = x11.find_windows(name_contains=target)
@@ -609,14 +724,17 @@ class DesktopController:
             if not closed:
                 try:
                     commands = self.app_launcher._get_commands_for(target)
-                    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                    for proc in psutil.process_iter(["pid", "name", "cmdline"]):
                         try:
-                            pname = proc.info['name'] or ""
-                            pcmdline = " ".join(proc.info['cmdline'] or [])
+                            pname = proc.info["name"] or ""
+                            pcmdline = " ".join(proc.info["cmdline"] or [])
                             for cmd in commands:
-                                if cmd.lower() in pname.lower() or cmd.lower() in pcmdline.lower():
+                                if (
+                                    cmd.lower() in pname.lower()
+                                    or cmd.lower() in pcmdline.lower()
+                                ):
                                     # Skip our own process
-                                    if proc.info['pid'] == os.getpid():
+                                    if proc.info["pid"] == os.getpid():
                                         continue
                                     proc.terminate()
                                     closed = True
@@ -628,7 +746,11 @@ class DesktopController:
                     errors.append(f"SIGTERM: {e}")
 
             if not closed:
-                return {"success": False, "error": f"Could not close {target}", "details": errors}
+                return {
+                    "success": False,
+                    "error": f"Could not close {target}",
+                    "details": errors,
+                }
             return {"success": True, "message": f"Closing {target}"}
         elif action_type == "type_text":
             text = params.get("text", target)
@@ -636,7 +758,10 @@ class DesktopController:
             click_y = params.get("click_y")
             grid_cell = params.get("grid_cell")
             if not grid_cell and (click_x is None or click_y is None):
-                return {"success": False, "error": "click_x and click_y (or grid_cell) are required for type_text. The image_width and image_height come from the [Shared screen image dimensions...] note."}
+                return {
+                    "success": False,
+                    "error": "click_x and click_y (or grid_cell) are required for type_text. The image_width and image_height come from the [Shared screen image dimensions...] note.",
+                }
             image_width = params.get("image_width")
             image_height = params.get("image_height")
             grid_rows = params.get("grid_rows", 6)
@@ -645,9 +770,16 @@ class DesktopController:
             cell_y = params.get("cell_y", 0.5)
             success, mapped = self._click_with_map(
                 lambda: self.input_controller.type_text(
-                    text, click_x, click_y, image_width, image_height,
-                    grid_cell=grid_cell, grid_rows=grid_rows, grid_cols=grid_cols,
-                    cell_x=cell_x, cell_y=cell_y,
+                    text,
+                    click_x,
+                    click_y,
+                    image_width,
+                    image_height,
+                    grid_cell=grid_cell,
+                    grid_rows=grid_rows,
+                    grid_cols=grid_cols,
+                    cell_x=cell_x,
+                    cell_y=cell_y,
                 ),
                 image_width,
                 image_height,
@@ -659,11 +791,19 @@ class DesktopController:
             }
         elif action_type == "press_key":
             success = self.input_controller.press_key(target)
-            return {"success": success, "message": f"Pressed {target}" if success else f"Failed to press {target}"}
+            return {
+                "success": success,
+                "message": f"Pressed {target}"
+                if success
+                else f"Failed to press {target}",
+            }
         elif action_type == "hotkey":
             keys = params.get("keys", [])
             success = self.input_controller.hotkey(*keys)
-            return {"success": success, "message": "Hotkey pressed" if success else "Failed to press hotkey"}
+            return {
+                "success": success,
+                "message": "Hotkey pressed" if success else "Failed to press hotkey",
+            }
         elif action_type == "click":
             x = params.get("x")
             y = params.get("y")
@@ -676,9 +816,15 @@ class DesktopController:
             cell_y = params.get("cell_y", 0.5)
             success, mapped = self._click_with_map(
                 lambda: self.input_controller.click(
-                    x, y, image_width, image_height,
-                    grid_cell=grid_cell, grid_rows=grid_rows, grid_cols=grid_cols,
-                    cell_x=cell_x, cell_y=cell_y,
+                    x,
+                    y,
+                    image_width,
+                    image_height,
+                    grid_cell=grid_cell,
+                    grid_rows=grid_rows,
+                    grid_cols=grid_cols,
+                    cell_x=cell_x,
+                    cell_y=cell_y,
                 ),
                 image_width,
                 image_height,
@@ -697,11 +843,19 @@ class DesktopController:
         elif action_type == "read_file":
             return self.file_controller.read_file(params.get("path", target))
         elif action_type == "write_file":
-            return self.file_controller.write_file(params.get("path", target), params.get("content", ""), params.get("append", False))
+            return self.file_controller.write_file(
+                params.get("path", target),
+                params.get("content", ""),
+                params.get("append", False),
+            )
         elif action_type == "delete_file":
-            return self.file_controller.delete_file(params.get("path", target), params.get("force", False))
+            return self.file_controller.delete_file(
+                params.get("path", target), params.get("force", False)
+            )
         elif action_type == "list_directory":
-            return self.file_controller.list_directory(params.get("path", target or "."))
+            return self.file_controller.list_directory(
+                params.get("path", target or ".")
+            )
         elif action_type == "find_element":
             a11y = get_accessibility_controller()
             return a11y.find_elements(
@@ -709,20 +863,20 @@ class DesktopController:
                 role=params.get("role"),
                 app_name=params.get("app_name"),
                 text=params.get("text"),
-                max_results=params.get("max_results", 10)
+                max_results=params.get("max_results", 10),
             )
         elif action_type == "click_element":
             a11y = get_accessibility_controller()
             return a11y.click_element_by_name(
                 name=params.get("name"),
                 role=params.get("role"),
-                app_name=params.get("app_name")
+                app_name=params.get("app_name"),
             )
         elif action_type == "list_clickable_elements":
             a11y = get_accessibility_controller()
             return a11y.list_interactive_elements(
                 app_name=params.get("app_name"),
-                max_results=params.get("max_results", 20)
+                max_results=params.get("max_results", 20),
             )
         elif action_type == "get_active_window":
             a11y = get_accessibility_controller()
@@ -730,8 +884,7 @@ class DesktopController:
         elif action_type == "find_window":
             x11 = get_x11_controller()
             return x11.find_windows(
-                name_contains=params.get("name"),
-                class_contains=params.get("class")
+                name_contains=params.get("name"), class_contains=params.get("class")
             )
         elif action_type == "click_window":
             x11 = get_x11_controller()
@@ -757,8 +910,10 @@ class DesktopController:
             if grid_cell is None and (x is None or y is None):
                 return {"success": False, "error": "x and y (or grid_cell) required"}
             return x11.click_at(
-                x, y,
-                image_width=image_width, image_height=image_height,
+                x,
+                y,
+                image_width=image_width,
+                image_height=image_height,
                 grid_cell=grid_cell,
                 grid_rows=params.get("grid_rows", 6),
                 grid_cols=params.get("grid_cols", 8),
@@ -797,7 +952,9 @@ class DesktopController:
             name_contains = params.get("name")
             class_contains = params.get("class")
             if name_contains or class_contains:
-                return x11.find_windows(name_contains=name_contains, class_contains=class_contains)
+                return x11.find_windows(
+                    name_contains=name_contains, class_contains=class_contains
+                )
             else:
                 return x11.list_visible_windows()
         else:

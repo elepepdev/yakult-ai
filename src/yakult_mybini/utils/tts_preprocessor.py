@@ -121,8 +121,16 @@ def remove_special_characters(text: str) -> str:
 
 
 _DIGIT_WORDS_ID = {
-    "0": "nol", "1": "satu", "2": "dua", "3": "tiga", "4": "empat",
-    "5": "lima", "6": "enam", "7": "tujuh", "8": "delapan", "9": "sembilan",
+    "0": "nol",
+    "1": "satu",
+    "2": "dua",
+    "3": "tiga",
+    "4": "empat",
+    "5": "lima",
+    "6": "enam",
+    "7": "tujuh",
+    "8": "delapan",
+    "9": "sembilan",
 }
 
 
@@ -133,15 +141,34 @@ def normalize_decimal_numbers(text: str) -> str:
     - Time format after jam/pukul (e.g. 'Jam 9.30'): → 'jam sembilan tiga puluh'
       Special time rules: 01-09 menit → 'lebih X', 15 menit → 'seperempat'
     """
+
     def _words(n: str) -> str:
         n = n.lstrip("0") or "0"
         if n == "0":
             return "nol"
-        ones_map = {"1": "satu", "2": "dua", "3": "tiga", "4": "empat", "5": "lima",
-                     "6": "enam", "7": "tujuh", "8": "delapan", "9": "sembilan"}
-        tens_map = {"10": "sepuluh", "11": "sebelas", "12": "dua belas", "13": "tiga belas",
-                    "14": "empat belas", "15": "lima belas", "16": "enam belas",
-                    "17": "tujuh belas", "18": "delapan belas", "19": "sembilan belas"}
+        ones_map = {
+            "1": "satu",
+            "2": "dua",
+            "3": "tiga",
+            "4": "empat",
+            "5": "lima",
+            "6": "enam",
+            "7": "tujuh",
+            "8": "delapan",
+            "9": "sembilan",
+        }
+        tens_map = {
+            "10": "sepuluh",
+            "11": "sebelas",
+            "12": "dua belas",
+            "13": "tiga belas",
+            "14": "empat belas",
+            "15": "lima belas",
+            "16": "enam belas",
+            "17": "tujuh belas",
+            "18": "delapan belas",
+            "19": "sembilan belas",
+        }
         if n in tens_map:
             return tens_map[n]
         if len(n) == 1:
@@ -166,8 +193,8 @@ def normalize_decimal_numbers(text: str) -> str:
     def decimal_replacer(m: re.Match) -> str:
         whole = m.group(1)
         frac = m.group(2)
-        before = text[max(0, m.start() - 12):m.start()].lower()
-        is_time = bool(re.search(r'(?:jam|pukul)\s*$', before))
+        before = text[max(0, m.start() - 12) : m.start()].lower()
+        is_time = bool(re.search(r"(?:jam|pukul)\s*$", before))
         if is_time:
             return _words(whole) + " " + time_minutes(frac)
         whole_words = " ".join(_DIGIT_WORDS_ID.get(d, d) for d in whole if d.isdigit())
@@ -177,7 +204,7 @@ def normalize_decimal_numbers(text: str) -> str:
     result = []
     last_end = 0
     for m in re.finditer(r"(\d+)[.](\d+)", text):
-        result.append(text[last_end:m.start()])
+        result.append(text[last_end : m.start()])
         result.append(decimal_replacer(m))
         last_end = m.end()
     result.append(text[last_end:])
@@ -266,9 +293,7 @@ def filter_code_blocks(text: str) -> str:
     Returns:
         The string with code block content removed.
     """
-    filtered_text = re.sub(
-        r"```[\s\S]*?```", "", text
-    )
+    filtered_text = re.sub(r"```[\s\S]*?```", "", text)
     filtered_text = re.sub(r"\s+", " ", filtered_text).strip()
     return filtered_text
 

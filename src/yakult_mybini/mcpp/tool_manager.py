@@ -34,11 +34,13 @@ class ToolManager:
     def filter_tool_names(self, allowed_names: set) -> None:
         """Filter both tool lists to only include tools in allowed_names."""
         self._formatted_tools_openai = [
-            t for t in self._original_openai
+            t
+            for t in self._original_openai
             if t.get("function", {}).get("name") in allowed_names
         ]
         self._formatted_tools_claude = [
-            t for t in self._original_claude
+            t
+            for t in self._original_claude
             if t.get("function", {}).get("name") in allowed_names
         ]
         logger.info(

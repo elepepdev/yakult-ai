@@ -1,4 +1,3 @@
-import re
 from typing import Union, List, Dict, Any, Optional
 import asyncio
 import json
@@ -21,6 +20,7 @@ from ..service_context import ServiceContext
 
 from ..agent.output_types import SentenceOutput, AudioOutput
 from ..utils.token_tracker import get_tracker
+
 
 async def process_single_conversation(
     context: ServiceContext,
@@ -103,15 +103,24 @@ async def process_single_conversation(
 
                     await websocket_send(json.dumps(output_item))
 
-                elif isinstance(output_item, dict) and output_item.get("type") == "youtube-invite":
+                elif (
+                    isinstance(output_item, dict)
+                    and output_item.get("type") == "youtube-invite"
+                ):
                     logger.info(f"Youtube invite: {output_item}")
                     await websocket_send(json.dumps(output_item))
 
-                elif isinstance(output_item, dict) and output_item.get("type") == "playlist-invite":
+                elif (
+                    isinstance(output_item, dict)
+                    and output_item.get("type") == "playlist-invite"
+                ):
                     logger.info(f"Playlist invite: {output_item}")
                     await websocket_send(json.dumps(output_item))
 
-                elif isinstance(output_item, dict) and output_item.get("type") == "mv-invite":
+                elif (
+                    isinstance(output_item, dict)
+                    and output_item.get("type") == "mv-invite"
+                ):
                     logger.info(f"MV invite: {output_item}")
                     await websocket_send(json.dumps(output_item))
 
@@ -180,9 +189,7 @@ async def process_single_conversation(
         # Extract long-term memories (fire-and-forget, non-blocking)
         if context.memory_manager and full_response:
             extract_text = f"User: {input_text}\nAI: {full_response}"
-            asyncio.ensure_future(
-                context.memory_manager.extract_memories(extract_text)
-            )
+            asyncio.ensure_future(context.memory_manager.extract_memories(extract_text))
 
         # Track last proactive response to prevent repetition
         if metadata and metadata.get("proactive_speak") and full_response:

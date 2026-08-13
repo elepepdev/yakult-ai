@@ -2,6 +2,7 @@ from loguru import logger
 
 try:
     import tiktoken
+
     _HAS_TIKTOKEN = True
 except ModuleNotFoundError:
     _HAS_TIKTOKEN = False
@@ -18,7 +19,9 @@ class TokenTracker:
         self.total_output_tokens = 0
         self.total_conversations = 0
         if not _HAS_TIKTOKEN:
-            logger.warning("tiktoken not installed; token counts are approximate (chars/4)")
+            logger.warning(
+                "tiktoken not installed; token counts are approximate (chars/4)"
+            )
 
     def count(self, text: str) -> int:
         try:
@@ -41,19 +44,14 @@ class TokenTracker:
         tag = f" Token {emoji} " if emoji else " Token "
         top = f"  ╭─{tag}{'─' * (_W - 1 - len(tag))}╮"
         mid = (
-            f"  │  in:  {in_tokens:>6}   out:  {out_tokens:>6}"
-            f"   total:  {total:<6}   │"
+            f"  │  in:  {in_tokens:>6}   out:  {out_tokens:>6}   total:  {total:<6}   │"
         )
         bot = f"  ╰{'─' * _W}╯"
         return f"\n{top}\n{mid}\n{bot}"
 
     def summary(self) -> str:
         total = self.total_input_tokens + self.total_output_tokens
-        avg = (
-            total / self.total_conversations
-            if self.total_conversations
-            else 0
-        )
+        avg = total / self.total_conversations if self.total_conversations else 0
         items = [
             ("Conversations", str(self.total_conversations)),
             ("Input tokens", str(self.total_input_tokens)),

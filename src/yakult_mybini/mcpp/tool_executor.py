@@ -21,9 +21,19 @@ from .music_player_manager import music_player_manager
 PACKAGE_TOOLS = {"install_package", "remove_package", "update_system"}
 BACKGROUND_COMMANDS = {"run_command", "run_sudo_command"}
 
-DANGEROUS_COMMANDS = ["rm", "rmdir", "del", "format", "dd", "mkfs", "shutdown", "reboot", "poweroff"]
+DANGEROUS_COMMANDS = [
+    "rm",
+    "rmdir",
+    "del",
+    "format",
+    "dd",
+    "mkfs",
+    "shutdown",
+    "reboot",
+    "poweroff",
+]
 
-from .file_tools import FILE_TOOLS, run_file_operation
+from .file_tools import FILE_TOOLS, run_file_operation  # noqa: E402
 
 ApprovalCallback = Callable[[Dict[str, Any]], Any]
 
@@ -105,7 +115,9 @@ class ToolExecutor:
                 for obj in recovered_objects:
                     merged.update(obj)
                 if merged:
-                    logger.info(f"Recovered tool arguments from malformed JSON (merged {len(recovered_objects)} objects): {merged}")
+                    logger.info(
+                        f"Recovered tool arguments from malformed JSON (merged {len(recovered_objects)} objects): {merged}"
+                    )
                     tool_input = merged
                 else:
                     result_content = (
@@ -172,12 +184,16 @@ class ToolExecutor:
             return {
                 "role": "tool",
                 "tool_call_id": tool_id,
-                "content": result_content if isinstance(result_content, list) else str(result_content),
+                "content": result_content
+                if isinstance(result_content, list)
+                else str(result_content),
             }
         elif caller_mode == "Prompt":
             return {
                 "tool_id": tool_id,
-                "content": result_content if isinstance(result_content, list) else str(result_content),
+                "content": result_content
+                if isinstance(result_content, list)
+                else str(result_content),
                 "is_error": is_error,
             }
         return None
@@ -220,7 +236,9 @@ class ToolExecutor:
     ) -> AsyncIterator[Dict[str, Any]]:
         """Execute tools and yield status updates."""
         tool_results_for_llm = []
-        seen_calls: dict[str, str] = {}  # (tool_name, args_json) -> tool_id of first call
+        seen_calls: dict[
+            str, str
+        ] = {}  # (tool_name, args_json) -> tool_id of first call
 
         logger.info(f"Executing {len(tool_calls)} tool(s) for {caller_mode} caller.")
         for call in tool_calls:
@@ -237,12 +255,19 @@ class ToolExecutor:
 
             # ---- Deduplicate: skip if same tool+args already executed ----
             if tool_name and not parse_error and tool_input is not None:
-                call_key = f"{tool_name}:{json.dumps(tool_input, sort_keys=True, default=str)}"
+                call_key = (
+                    f"{tool_name}:{json.dumps(tool_input, sort_keys=True, default=str)}"
+                )
                 if call_key in seen_calls:
                     original_id = seen_calls[call_key]
-                    logger.info(f"Skipping duplicate tool call: {tool_name} (same as {original_id})")
+                    logger.info(
+                        f"Skipping duplicate tool call: {tool_name} (same as {original_id})"
+                    )
                     formatted_result = self.format_tool_result(
-                        caller_mode, tool_id, f"[Duplicate of {original_id} — result reused]", True
+                        caller_mode,
+                        tool_id,
+                        f"[Duplicate of {original_id} — result reused]",
+                        True,
                     )
                     if formatted_result:
                         tool_results_for_llm.append(formatted_result)
@@ -251,7 +276,9 @@ class ToolExecutor:
 
             # ---- Direct execution for package management tools with progress ----
             if tool_name in PACKAGE_TOOLS:
-                async for result_item in self._execute_package_tool(tool_name, tool_id, tool_input, caller_mode):
+                async for result_item in self._execute_package_tool(
+                    tool_name, tool_id, tool_input, caller_mode
+                ):
                     yield result_item
                     if result_item.get("type") == "final_tool_results":
                         tool_results_for_llm.extend(result_item.get("results", []))
@@ -259,7 +286,9 @@ class ToolExecutor:
 
             # ---- Direct execution for background commands with output streaming ----
             if tool_name in BACKGROUND_COMMANDS:
-                async for result_item in self._execute_background_command(tool_name, tool_id, tool_input, caller_mode):
+                async for result_item in self._execute_background_command(
+                    tool_name, tool_id, tool_input, caller_mode
+                ):
                     yield result_item
                     if result_item.get("type") == "final_tool_results":
                         tool_results_for_llm.extend(result_item.get("results", []))
@@ -362,9 +391,7 @@ class ToolExecutor:
                                         },
                                     }
                                 )
-                        llm_formatted_content = (
-                            claude_blocks if claude_blocks else ""
-                        )
+                        llm_formatted_content = claude_blocks if claude_blocks else ""
                     elif caller_mode == "OpenAI":
                         openai_parts = []
                         if text_content:
@@ -375,7 +402,9 @@ class ToolExecutor:
                                 and "data" in item
                                 and "mimeType" in item
                             ):
-                                data_url = f"data:{item['mimeType']};base64,{item['data']}"
+                                data_url = (
+                                    f"data:{item['mimeType']};base64,{item['data']}"
+                                )
                                 openai_parts.append(
                                     {
                                         "type": "image_url",
@@ -398,7 +427,9 @@ class ToolExecutor:
                                 and "data" in item
                                 and "mimeType" in item
                             ):
-                                data_url = f"data:{item['mimeType']};base64,{item['data']}"
+                                data_url = (
+                                    f"data:{item['mimeType']};base64,{item['data']}"
+                                )
                                 openai_parts.append(
                                     {
                                         "type": "image_url",
@@ -517,9 +548,17 @@ class ToolExecutor:
         """Execute a package management tool with real-time progress."""
         from ..agentic.package_manager import run_package_operation
 
-        pkg_name = tool_input.get("package_name", "") if isinstance(tool_input, dict) else ""
-        mode = tool_input.get("mode", "cascade") if isinstance(tool_input, dict) else "cascade"
-        use_aur = tool_input.get("use_aur", False) if isinstance(tool_input, dict) else False
+        pkg_name = (
+            tool_input.get("package_name", "") if isinstance(tool_input, dict) else ""
+        )
+        mode = (
+            tool_input.get("mode", "cascade")
+            if isinstance(tool_input, dict)
+            else "cascade"
+        )
+        use_aur = (
+            tool_input.get("use_aur", False) if isinstance(tool_input, dict) else False
+        )
 
         last_progress = 0
         async for progress, content_line, is_error in run_package_operation(
@@ -532,7 +571,9 @@ class ToolExecutor:
             if progress > last_progress or is_error:
                 last_progress = progress
                 is_final = progress >= 100 and not is_error
-                status = "error" if is_error else ("completed" if is_final else "running")
+                status = (
+                    "error" if is_error else ("completed" if is_final else "running")
+                )
                 yield {
                     "type": "tool_call_status",
                     "tool_id": tool_id,
@@ -540,19 +581,29 @@ class ToolExecutor:
                     "status": status,
                     "progress": progress,
                     "content": content_line,
-                    "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z",
+                    "timestamp": datetime.datetime.now(
+                        datetime.timezone.utc
+                    ).isoformat()
+                    + "Z",
                 }
                 if is_final or is_error:
                     try:
                         data = json.loads(content_line)
-                        text_content = data.get("output", content_line) if data.get("success") else data.get("error", content_line)
+                        text_content = (
+                            data.get("output", content_line)
+                            if data.get("success")
+                            else data.get("error", content_line)
+                        )
                     except json.JSONDecodeError:
                         text_content = content_line
                     formatted_result = self.format_tool_result(
                         caller_mode, tool_id, text_content, is_error
                     )
                     if formatted_result:
-                        yield {"type": "final_tool_results", "results": [formatted_result]}
+                        yield {
+                            "type": "final_tool_results",
+                            "results": [formatted_result],
+                        }
 
     async def _execute_background_command(
         self,
@@ -570,9 +621,12 @@ class ToolExecutor:
                 "tool_name": tool_name,
                 "status": "error",
                 "content": "No command provided",
-                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z",
+                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
+                + "Z",
             }
-            formatted_result = self.format_tool_result(caller_mode, tool_id, "Error: No command provided", True)
+            formatted_result = self.format_tool_result(
+                caller_mode, tool_id, "Error: No command provided", True
+            )
             if formatted_result:
                 yield {"type": "final_tool_results", "results": [formatted_result]}
             return
@@ -600,13 +654,22 @@ class ToolExecutor:
                         "tool_name": tool_name,
                         "status": "error",
                         "content": f"Command blocked: '{dangerous}' is not allowed for safety reasons.",
-                        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z",
+                        "timestamp": datetime.datetime.now(
+                            datetime.timezone.utc
+                        ).isoformat()
+                        + "Z",
                     }
                     formatted_result = self.format_tool_result(
-                        caller_mode, tool_id, f"Error: Command blocked (contains '{dangerous}')", True
+                        caller_mode,
+                        tool_id,
+                        f"Error: Command blocked (contains '{dangerous}')",
+                        True,
                     )
                     if formatted_result:
-                        yield {"type": "final_tool_results", "results": [formatted_result]}
+                        yield {
+                            "type": "final_tool_results",
+                            "results": [formatted_result],
+                        }
                     return
 
         try:
@@ -619,11 +682,22 @@ class ToolExecutor:
                         "tool_name": tool_name,
                         "status": "error",
                         "content": "sudo password not configured (set sudo_password in conf.yaml)",
-                        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z",
+                        "timestamp": datetime.datetime.now(
+                            datetime.timezone.utc
+                        ).isoformat()
+                        + "Z",
                     }
-                    formatted_result = self.format_tool_result(caller_mode, tool_id, "Error: sudo password not configured", True)
+                    formatted_result = self.format_tool_result(
+                        caller_mode,
+                        tool_id,
+                        "Error: sudo password not configured",
+                        True,
+                    )
                     if formatted_result:
-                        yield {"type": "final_tool_results", "results": [formatted_result]}
+                        yield {
+                            "type": "final_tool_results",
+                            "results": [formatted_result],
+                        }
                     return
                 process = await asyncio.create_subprocess_shell(
                     f"echo '{sudo_pw}' | sudo -S {full_command}",
@@ -666,7 +740,9 @@ class ToolExecutor:
                 if remaining <= 0:
                     break
                 try:
-                    line = await asyncio.wait_for(queue.get(), timeout=min(0.1, remaining))
+                    line = await asyncio.wait_for(
+                        queue.get(), timeout=min(0.1, remaining)
+                    )
                     if line is None:
                         streams_alive -= 1
                     else:
@@ -677,7 +753,10 @@ class ToolExecutor:
                             "tool_name": tool_name,
                             "status": "running",
                             "content": line,
-                            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z",
+                            "timestamp": datetime.datetime.now(
+                                datetime.timezone.utc
+                            ).isoformat()
+                            + "Z",
                         }
                 except asyncio.TimeoutError:
                     continue
@@ -691,7 +770,9 @@ class ToolExecutor:
 
             returncode = await process.wait()
 
-            output_text = "\n".join(full_output_lines) if full_output_lines else "(no output)"
+            output_text = (
+                "\n".join(full_output_lines) if full_output_lines else "(no output)"
+            )
             is_error = returncode != 0
             status = "error" if is_error else "completed"
 
@@ -701,7 +782,8 @@ class ToolExecutor:
                 "tool_name": tool_name,
                 "status": status,
                 "content": output_text,
-                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z",
+                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
+                + "Z",
             }
 
             formatted_result = self.format_tool_result(
@@ -720,9 +802,12 @@ class ToolExecutor:
                 "tool_name": tool_name,
                 "status": "error",
                 "content": "Command timed out (120s)",
-                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z",
+                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
+                + "Z",
             }
-            formatted_result = self.format_tool_result(caller_mode, tool_id, "Error: Command timed out", True)
+            formatted_result = self.format_tool_result(
+                caller_mode, tool_id, "Error: Command timed out", True
+            )
             if formatted_result:
                 yield {"type": "final_tool_results", "results": [formatted_result]}
         except Exception as e:
@@ -733,9 +818,12 @@ class ToolExecutor:
                 "tool_name": tool_name,
                 "status": "error",
                 "content": f"Error: {e}",
-                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z",
+                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
+                + "Z",
             }
-            formatted_result = self.format_tool_result(caller_mode, tool_id, f"Error: {e}", True)
+            formatted_result = self.format_tool_result(
+                caller_mode, tool_id, f"Error: {e}", True
+            )
             if formatted_result:
                 yield {"type": "final_tool_results", "results": [formatted_result]}
 

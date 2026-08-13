@@ -5,9 +5,7 @@ from typing import Any, Dict, List, Optional
 from loguru import logger
 from uuid import uuid4
 
-PLAYLISTS_DIR = os.environ.get(
-    "PLAYLISTS_DIR", os.path.join(os.getcwd(), "playlists")
-)
+PLAYLISTS_DIR = os.environ.get("PLAYLISTS_DIR", os.path.join(os.getcwd(), "playlists"))
 MAX_PLAYLISTS = 50
 MAX_SONGS = 500
 
@@ -200,9 +198,7 @@ class PlaylistManager:
                 return True
         return False
 
-    def reorder_song(
-        self, playlist_id: str, song_id: str, new_index: int
-    ) -> bool:
+    def reorder_song(self, playlist_id: str, song_id: str, new_index: int) -> bool:
         """Move a song within a playlist to a new index (0-based)."""
         items = self.load()
         for p in items:
@@ -223,7 +219,10 @@ class PlaylistManager:
         items = self.load()
         if not items:
             return ""
-        lines = [f"- {p.name} (id: {p.id}): {', '.join(s.title for s in p.songs[:10])}" for p in items]
+        lines = [
+            f"- {p.name} (id: {p.id}): {', '.join(s.title for s in p.songs[:10])}"
+            for p in items
+        ]
         return "[PLAYLISTS]\n" + "\n".join(lines)
 
 

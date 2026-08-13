@@ -218,9 +218,7 @@ class GrokConfig(OpenAICompatibleConfig):
 class OpenRouterConfig(OpenAICompatibleConfig):
     """Configuration for OpenRouter API."""
 
-    base_url: str = Field(
-        "https://openrouter.ai/api/v1", alias="base_url"
-    )
+    base_url: str = Field("https://openrouter.ai/api/v1", alias="base_url")
     interrupt_method: Literal["system", "user"] = Field(
         "user", alias="interrupt_method"
     )
@@ -229,9 +227,7 @@ class OpenRouterConfig(OpenAICompatibleConfig):
 class NvidiaNIMConfig(OpenAICompatibleConfig):
     """Configuration for NVIDIA NIM API."""
 
-    base_url: str = Field(
-        "https://integrate.api.nvidia.com/v1", alias="base_url"
-    )
+    base_url: str = Field("https://integrate.api.nvidia.com/v1", alias="base_url")
     interrupt_method: Literal["system", "user"] = Field(
         "system", alias="interrupt_method"
     )
@@ -402,7 +398,9 @@ class StatelessLLMConfigs(I18nMixin, BaseModel):
             en="Configuration for Deepseek API", zh="Deepseek API 配置"
         ),
         "groq_llm": Description(en="Configuration for Groq API", zh="Groq API 配置"),
-        "grok_llm": Description(en="Configuration for xAI Grok API", zh="xAI Grok API 配置"),
+        "grok_llm": Description(
+            en="Configuration for xAI Grok API", zh="xAI Grok API 配置"
+        ),
         "openrouter_llm": Description(
             en="Configuration for OpenRouter API", zh="OpenRouter API 配置"
         ),
@@ -410,7 +408,8 @@ class StatelessLLMConfigs(I18nMixin, BaseModel):
             en="Configuration for NVIDIA NIM API", zh="NVIDIA NIM API 配置"
         ),
         "cloudflare_workers_llm": Description(
-            en="Configuration for Cloudflare Workers AI", zh="Cloudflare Workers AI 配置"
+            en="Configuration for Cloudflare Workers AI",
+            zh="Cloudflare Workers AI 配置",
         ),
         "opencode_zen_llm": Description(
             en="Configuration for OpenCode Zen API (pay-as-you-go gateway)",
@@ -431,4 +430,3 @@ class StatelessLLMConfigs(I18nMixin, BaseModel):
             en="Configuration for local Llama.cpp", zh="本地Llama.cpp配置"
         ),
     }
-

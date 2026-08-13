@@ -1,6 +1,6 @@
 import re
 import requests
-from typing import Dict, Optional
+from typing import Dict
 from bs4 import BeautifulSoup
 
 
@@ -23,7 +23,10 @@ class WebFetcher:
             resp.raise_for_status()
 
             content_type = resp.headers.get("Content-Type", "")
-            if "text/html" not in content_type and "application/xhtml" not in content_type:
+            if (
+                "text/html" not in content_type
+                and "application/xhtml" not in content_type
+            ):
                 return {
                     "success": True,
                     "url": url,
@@ -35,7 +38,20 @@ class WebFetcher:
 
             soup = BeautifulSoup(resp.text, "lxml")
 
-            for tag in soup(["script", "style", "nav", "footer", "header", "aside", "noscript", "iframe", "form", "svg"]):
+            for tag in soup(
+                [
+                    "script",
+                    "style",
+                    "nav",
+                    "footer",
+                    "header",
+                    "aside",
+                    "noscript",
+                    "iframe",
+                    "form",
+                    "svg",
+                ]
+            ):
                 tag.decompose()
 
             title = ""
@@ -47,7 +63,25 @@ class WebFetcher:
             if meta_desc and meta_desc.get("content"):
                 description = meta_desc["content"].strip()
 
-            for tag in soup(["h1", "h2", "h3", "h4", "h5", "h6", "p", "li", "pre", "code", "blockquote", "th", "td", "dt", "dd"]):
+            for tag in soup(
+                [
+                    "h1",
+                    "h2",
+                    "h3",
+                    "h4",
+                    "h5",
+                    "h6",
+                    "p",
+                    "li",
+                    "pre",
+                    "code",
+                    "blockquote",
+                    "th",
+                    "td",
+                    "dt",
+                    "dd",
+                ]
+            ):
                 tag_text = tag.get_text(strip=True)
                 if tag_text:
                     tag_name = tag.name
@@ -91,10 +125,22 @@ class WebFetcher:
             }
 
         except requests.Timeout:
-            return {"success": False, "url": url, "error": f"Request timed out after {timeout}s"}
+            return {
+                "success": False,
+                "url": url,
+                "error": f"Request timed out after {timeout}s",
+            }
         except requests.HTTPError as e:
-            return {"success": False, "url": url, "error": f"HTTP {e.response.status_code}"}
+            return {
+                "success": False,
+                "url": url,
+                "error": f"HTTP {e.response.status_code}",
+            }
         except requests.ConnectionError:
-            return {"success": False, "url": url, "error": "Connection failed (DNS or unreachable)"}
+            return {
+                "success": False,
+                "url": url,
+                "error": "Connection failed (DNS or unreachable)",
+            }
         except Exception as e:
             return {"success": False, "url": url, "error": str(e)}

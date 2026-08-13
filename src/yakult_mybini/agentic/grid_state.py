@@ -41,7 +41,7 @@ def set_grid_spec(grid_spec: str = "8x6") -> str:
     _grid_rows, _grid_cols = parsed
     return (
         f"Grid set to {_grid_cols}x{_grid_rows} "
-        f"(cells {_col_label(0)}1 – {_col_label(_grid_cols-1)}{_grid_rows})."
+        f"(cells {_col_label(0)}1 – {_col_label(_grid_cols - 1)}{_grid_rows})."
     )
 
 
@@ -73,6 +73,7 @@ def apply_grid_to_image(base64_data_uri: str) -> str:
         import base64
         from PIL import Image
         import io
+
         prefix, b64 = base64_data_uri.split("base64,", 1)
         pil_img = Image.open(io.BytesIO(base64.b64decode(b64)))
         grid_img = add_grid(pil_img, rows=_grid_rows, cols=_grid_cols)

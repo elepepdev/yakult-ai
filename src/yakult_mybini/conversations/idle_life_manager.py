@@ -159,6 +159,7 @@ class IdleLifeConfig:
 
 # ── Mood persistence helpers ─────────────────────────────────────────
 
+
 def _mood_path(base: str) -> str:
     return os.path.join(base, "idle_mood.json")
 
@@ -218,9 +219,11 @@ class IdleLifeManager:
         self._music_trigger: Optional[Callable] = music_trigger
         self._memory_prompt: str = ""
         self._screen_context: str = ""
-        self._mood: float = _load_mood(
-            config.persistence_path
-        ) if config and config.persistence_enabled else 0.5
+        self._mood: float = (
+            _load_mood(config.persistence_path)
+            if config and config.persistence_enabled
+            else 0.5
+        )
         self._last_mood_tick: float = time.time()
         self._last_persist_time: float = 0.0
         self._dream_llm_busy: bool = False
@@ -435,7 +438,9 @@ class IdleLifeManager:
     def _mark_event_fired(self, event_type: str) -> None:
         self._event_cooldowns[event_type] = time.time()
         self._stats["total_events"] += 1
-        self._stats["by_type"][event_type] = self._stats["by_type"].get(event_type, 0) + 1
+        self._stats["by_type"][event_type] = (
+            self._stats["by_type"].get(event_type, 0) + 1
+        )
 
     # ── Config overrides ──────────────────────────────────────────
 
@@ -453,7 +458,8 @@ class IdleLifeManager:
             with open(path) as f:
                 data = json.load(f)
                 return {
-                    k: v for k, v in data.items()
+                    k: v
+                    for k, v in data.items()
                     if k in ("pagi", "siang", "sore", "malam")
                 }
         except Exception as e:
@@ -507,13 +513,15 @@ class IdleLifeManager:
 
             if dream and self._send:
                 await self._send(
-                    json.dumps({
-                        "type": "full-text",
-                        "text": "*{name} bermimpi…* {dream}".format(
-                            name=self._character_name, dream=dream
-                        ),
-                        "subconscious": True,
-                    })
+                    json.dumps(
+                        {
+                            "type": "full-text",
+                            "text": "*{name} bermimpi…* {dream}".format(
+                                name=self._character_name, dream=dream
+                            ),
+                            "subconscious": True,
+                        }
+                    )
                 )
                 logger.debug(f"IdleLife: Dream '{dream[:60]}...'")
         except Exception as e:
@@ -616,11 +624,13 @@ class IdleLifeManager:
         expression = self._pick_expression()
 
         await self._send(
-            json.dumps({
-                "type": "play-vrma",
-                "animation": anim,
-                "fade_in": 0.3,
-            })
+            json.dumps(
+                {
+                    "type": "play-vrma",
+                    "animation": anim,
+                    "fade_in": 0.3,
+                }
+            )
         )
 
         silent_payload = prepare_audio_payload(
@@ -644,10 +654,12 @@ class IdleLifeManager:
         if self._state != "IDLE":
             return
         await self._send(
-            json.dumps({
-                "type": "full-text",
-                "text": text,
-            })
+            json.dumps(
+                {
+                    "type": "full-text",
+                    "text": text,
+                }
+            )
         )
         logger.debug(f"IdleLife: IdleText '{text}'")
 
@@ -669,11 +681,15 @@ class IdleLifeManager:
             )
             chunks = []
             async for chunk in self._subconscious_llm.chat_completion(
-                messages=[{"role": "user", "content": "Apa yang sedang kamu pikirkan?"}],
+                messages=[
+                    {"role": "user", "content": "Apa yang sedang kamu pikirkan?"}
+                ],
                 system=system,
             ):
                 if self._state != "IDLE":
-                    logger.debug("IdleLife: subconscious cancelled (state changed to non-idle)")
+                    logger.debug(
+                        "IdleLife: subconscious cancelled (state changed to non-idle)"
+                    )
                     return
                 if isinstance(chunk, str):
                     chunks.append(chunk)
@@ -681,11 +697,13 @@ class IdleLifeManager:
             thought = "".join(chunks).strip()
             if thought and self._state == "IDLE":
                 await self._send(
-                    json.dumps({
-                        "type": "full-text",
-                        "text": thought,
-                        "subconscious": True,
-                    })
+                    json.dumps(
+                        {
+                            "type": "full-text",
+                            "text": thought,
+                            "subconscious": True,
+                        }
+                    )
                 )
                 logger.info(f"IdleLife: Subconscious '{thought}'")
             elif self._state == "IDLE":
@@ -750,16 +768,20 @@ class IdleLifeManager:
         if self._state_broadcast_counter % 5 != 0 or not self._send:
             return
         try:
-            self._send(json.dumps({
-                "type": "idle-life-state",
-                "state": self._state,
-                "mood": round(self._mood, 2),
-                "mood_label": self._mood_label(),
-                "time_period": self._time_period(),
-                "queue_len": len(self._event_queue),
-                "total_events": self._stats["total_events"],
-                "events_by_type": dict(self._stats["by_type"]),
-            }))
+            self._send(
+                json.dumps(
+                    {
+                        "type": "idle-life-state",
+                        "state": self._state,
+                        "mood": round(self._mood, 2),
+                        "mood_label": self._mood_label(),
+                        "time_period": self._time_period(),
+                        "queue_len": len(self._event_queue),
+                        "total_events": self._stats["total_events"],
+                        "events_by_type": dict(self._stats["by_type"]),
+                    }
+                )
+            )
         except Exception:
             pass
 
@@ -769,19 +791,24 @@ class IdleLifeManager:
         self._state = "SLEEP"
         if self._send:
             await self._send(
-                json.dumps({
-                    "type": "full-text",
-                    "text": "*{name} mulai mengantuk…*".format(name=self._character_name),
-                })
+                json.dumps(
+                    {
+                        "type": "full-text",
+                        "text": "*{name} mulai mengantuk…*".format(
+                            name=self._character_name
+                        ),
+                    }
+                )
             )
             await asyncio.sleep(3)
             await self._send(
-                json.dumps({
-                    "type": "full-text",
-                    "text": "*{name} tertidur…*".format(name=self._character_name),
-                })
+                json.dumps(
+                    {
+                        "type": "full-text",
+                        "text": "*{name} tertidur…*".format(name=self._character_name),
+                    }
+                )
             )
         logger.info(
-            f"IdleLife: going to sleep "
-            f"(idle for {time.time() - self._idle_since:.0f}s)"
+            f"IdleLife: going to sleep (idle for {time.time() - self._idle_since:.0f}s)"
         )
